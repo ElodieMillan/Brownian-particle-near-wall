@@ -1,6 +1,6 @@
 # Élodie Millan
 # June 2020
-# Langevin equation 3D for a free particule close to a rigid wall with inertia and weight.
+# Langevin equation 3D for a free particule close to a rigid wall without inertia and with weight.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from InertialLangevin3D import InertialLangevin3D
 
 
-class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
+class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
     def __init__(self, dt, Nt, R, rho, rhoF=1000., eta=0.001, T=300., x0=None):
         """
 
@@ -25,9 +25,11 @@ class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
             x0 = (0., 0., R)
         super().__init__(dt, Nt, R, rho, eta=eta, T=T, x0=x0)
         self.rhoF = rhoF
+        self.lD = 70e-9 # Debay length
         self.g = 9.81  # m/s²
         self.m = rho * (4 / 3) * np.pi * R ** 3
-        self.delta_m = self.m - (4 / 3) * np.pi * self.R ** 3 * self.rhoF
+        self.delta_m = (4 / 3) * np.pi * self.R ** 3 * (self.rho - self.rhoF)
+        self.lB = (self.kb * self.T) / (self.delta_m * self.g) # Boltzmann length
 
     def _gamma_xy(self, zi_1):
         """
@@ -68,16 +70,17 @@ class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
             * np.pi
             * self.R
             * self.eta
-            * (
+            * ((
                (6 * zi_1 ** 2 + 2 * self.R * zi_1)
                / (6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2)
             )
-            ** (-1)
+            ** (-1))
         )
+
         # print("gamma_z = ", self.gamma_z)
         return self.gamma_z
 
-    def _a(self, zi_1, gamma):
+    def _a(self, gamma):
         """
         Intern methode of RigidWallInertialLangevin3D class - white noise a = sqrt(k T gamma) at t-dt.
 
@@ -86,12 +89,18 @@ class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
 
         :return: The white noise a at the position z(t-dt) for a gamma value on x/y or z.
         """
+        import warnings
+        warnings.simplefilter("error")
         # print("gamma = ", gamma)
-        a = np.sqrt(2 * self.kb * self.T * gamma)
+        try :
+            a = np.sqrt(2 * self.kb * self.T / gamma)
+        except RuntimeWarning:
+            print("gamma =", gamma)
+
 
         return a
 
-    def _PositionXi(self, xi_1, xi_2, zi_1, rng, axis=None):
+    def _PositionXi(self, xi_1, zi_1, rng, axis=None):
         """
         Intern methode of InertialLangevin3D class - Position of a Brownian particule inertial with rigid wall, at time t.
 
@@ -110,23 +119,20 @@ class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
 
         if axis == "z":
             gamma = self._gamma_z
-            weight = -(self.delta_m / self.m) * self.g * self.dt ** 2
+            weight = (self.delta_m / gamma(zi_1)) * self.g * self.dt
+            elec = self.lD * (4*self.kb*self.T) * np.exp(- zi_1 / self.lD) / gamma(zi_1) * self.dt
+
             # print(self.delta_m)
         else:
             gamma = self._gamma_xy
+            elec = 0
             weight = 0
-        b = 2 + (self.dt * gamma(zi_1) / self.m)
-        c = 1 + (self.dt * gamma(zi_1) / self.m)
 
-        xi = (
-            ((b / c) * xi_1)
-            - ((1 / c) * xi_2)
-            + (self._a(zi_1, gamma(zi_1)) / c) * (self.dt ** 2 / self.m) * rng
-            + weight/c
-        )
-        # if axis == "z":
-        #     if xi < self.R:
-        #         xi = - xi # reflection
+        xi = (xi_1 - weight + elec + gamma(zi_1) * rng * self.dt)
+
+        if axis == "z":
+            if xi < 10e-9:
+                xi =  10e-9
 
         return xi
 
@@ -146,16 +152,15 @@ class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
         y = np.zeros(self.Nt)
         z = np.zeros(self.Nt)
 
-        # 2 first values of trajectory compute with random trajectory.
-        # x[0:2], y[0:2], z[0:2] = super().trajectory(output=True, Nt=2)
-        x[0:2] = np.array([self.x0[0], self.x0[0]])
-        y[0:2] = np.array([self.x0[1], self.x0[1]])
-        z[0:2] = np.array([self.x0[2], self.x0[2]])
+        # First values of trajectory compute with initial value.
+        x[0] = self.x0[0]
+        y[0] = self.x0[1]
+        z[0] = self.x0[2]
 
-        for i in range(2, self.Nt):
-            x[i] = self._PositionXi(x[i - 1], x[i - 2], z[i - 1], rngx[i])
-            y[i] = self._PositionXi(y[i - 1], y[i - 2], z[i - 1], rngy[i])
-            z[i] = self._PositionXi(z[i - 1], z[i - 2], z[i - 1], rngz[i], "z")
+        for i in range(1, self.Nt):
+            x[i] = self._PositionXi(x[i - 1], z[i - 1], rngx[i])
+            y[i] = self._PositionXi(y[i - 1], z[i - 1], rngy[i])
+            z[i] = self._PositionXi(z[i - 1], z[i - 1], rngz[i], "z")
 
         self.x = x
         self.y = y
@@ -166,79 +171,52 @@ class RigidWallInertialLangevin3D(InertialLangevin3D): #, Langevin3D
 
 
 if __name__ == "__main__":
-    langevin3D = RigidWallInertialLangevin3D(dt=1e-7, Nt=1000000, R=1e-6, rho=2000, x0=(0., 0., 0.01e-6))
+    langevin3D = RigidWallOverdampedLangevin3D(dt=1/60, Nt=100000, R=1.5e-6, rho=1050, x0=(0., 0., 1.e-6))
 
     langevin3D.trajectory()
-
-    plt.plot(langevin3D.t, langevin3D.z)
-    plt.show()
     #langevin3D.plotTrajectory()
-    # MSDx = langevin3D.MSD1D("x", output=True)
-    # MSDy = langevin3D.MSD1D("y", output=True)
-    # MSDz = langevin3D.MSD1D("z", output=True)
-    #
-    # # ----- MSD 1D -----
-    #
-    # fig1 = plt.figure()
-    # plt.loglog(
-    #     langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-    #     MSDx,
-    #     color="red",
-    #     linewidth=0.8,
-    #     label="MSDx inertial",
-    # )
-    # plt.loglog(
-    #     langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-    #     MSDy,
-    #     color="green",
-    #     linewidth=0.8,
-    #     label="MSDy inertial",
-    # )
-    # plt.loglog(
-    #     langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-    #     MSDz,
-    #     color="blue",
-    #     linewidth=0.8,
-    #     label="MSDz inertial",
-    # )
-    # plt.plot(
-    #     langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-    #     (2 * langevin3D.kb * langevin3D.T / langevin3D.gamma)
-    #     * langevin3D.t[langevin3D.list_dt_MSD],
-    #     color="black",
-    #     linewidth=0.8,
-    #     label="Non inertial theory : x = 2D t",
-    # )
-    # plt.xlabel("Times t/$ \tau $ [s]")
-    # plt.ylabel("MSD 1D [m²]")
-    # plt.title("Mean square displacement 1D")
-    # plt.legend()
-    # plt.show()
-    #
-    # # ----- MSD 3D -----
-    #
-    # MSD3D = langevin3D.MSD3D(output=True)
-    # fig2 = plt.figure()
-    # plt.loglog(
-    #     langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-    #     MSD3D,
-    #     color="red",
-    #     linewidth=0.8,
-    #     label="Inertial MSD",
-    # )
-    # plt.plot(
-    #     langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-    #     (6 * langevin3D.kb * langevin3D.T / langevin3D.gamma)
-    #     * langevin3D.t[langevin3D.list_dt_MSD],
-    #     color="black",
-    #     linewidth=0.8,
-    #     label="Non inertial theory : x = 6D t",
-    # )
-    # plt.xlabel("Times $ t/ \tau $")
-    # plt.ylabel("MSD 3D [m²]")
-    # plt.title("Mean square displacement 1D")
-    # plt.legend()
-    # plt.show()
-    #
-    # # langevin3D.speedDistribution1D("x", 10, plot=True)
-    # langevin3D.dXDistribution1D("x", 10, plot=True)
+
+    MSDx = langevin3D.MSD1D("x", output=True)
+    MSDy = langevin3D.MSD1D("y", output=True)
+    MSDz = langevin3D.MSD1D("z", output=True)
+
+    # ----- MSD 1D -----
+
+    fig1 = plt.figure()
+    plt.loglog(
+        langevin3D.t[langevin3D.list_dt_MSD],
+        MSDx,
+        color="red",
+        linewidth=0.8,
+        label="MSDx inertial",
+    )
+    plt.loglog(
+        langevin3D.t[langevin3D.list_dt_MSD] ,
+        MSDy,
+        color="green",
+        linewidth=0.8,
+        label="MSDy inertial",
+    )
+    plt.loglog(
+        langevin3D.t[langevin3D.list_dt_MSD] ,
+        MSDz,
+        color="blue",
+        linewidth=0.8,
+        label="MSDz inertial",
+    )
+    plt.plot(
+        langevin3D.t[langevin3D.list_dt_MSD] ,
+        (2 * langevin3D.kb * langevin3D.T / langevin3D.gamma)
+        * langevin3D.t[langevin3D.list_dt_MSD],
+        color="black",
+        linewidth=0.8,
+        label="Non inertial theory : x = 2D t",
+    )
+    plt.xlabel("Times t/$ \tau $ [s]")
+    plt.ylabel("MSD 1D [m²]")
+    plt.title("Mean square displacement 1D")
+    plt.legend()
+    plt.show()
+
+    plt.plot(langevin3D.t, langevin3D.z * 1e6)
+    plt.show()

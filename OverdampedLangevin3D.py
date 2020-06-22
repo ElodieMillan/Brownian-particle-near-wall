@@ -71,6 +71,7 @@ class Langevin3D:
         plt.title("3D trajectory of free particale")
         plt.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2))
         plt.legend()
+        plt.tight_layout()
         plt.show()
 
     def MSD1D(self, axis, output=False, plot=False):

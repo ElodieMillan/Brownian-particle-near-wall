@@ -142,7 +142,7 @@ if __name__ == "__main__":
     )
     plt.plot(
         langevin3D.t[langevin3D.list_dt_MSD] / langevin3D.tau,
-        (2 * langevin3D.kb * langevin3D.T / langevin3D.gamma)
+        (6 * langevin3D.kb * langevin3D.T / langevin3D.gamma)
         * langevin3D.t[langevin3D.list_dt_MSD],
         color="black",
         linewidth=0.8,
