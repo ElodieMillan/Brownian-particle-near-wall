@@ -4,12 +4,13 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-#from OverdampedLangevin3D import Langevin3D
+
+# from OverdampedLangevin3D import Langevin3D
 from InertialLangevin3D import InertialLangevin3D
 
 
-class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
-    def __init__(self, dt, Nt, R, rho, rhoF=1000., eta=0.001, T=300., x0=None):
+class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
+    def __init__(self, dt, Nt, R, rho, rhoF=1000.0, eta=0.001, T=300.0, x0=None):
         """
 
         :param dt: float - Time step [s].
@@ -22,14 +23,14 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
         :param x0: array float - Initial position of particule (DEFAULT = (0,0,R) [m]).
         """
         if x0 == None:
-            x0 = (0., 0., R)
+            x0 = (0.0, 0.0, R)
         super().__init__(dt, Nt, R, rho, eta=eta, T=T, x0=x0)
         self.rhoF = rhoF
-        self.lD = 70e-9 # Debay length
+        self.lD = 70e-9  # Debay length
         self.g = 9.81  # m/s²
         self.m = rho * (4 / 3) * np.pi * R ** 3
         self.delta_m = (4 / 3) * np.pi * self.R ** 3 * (self.rho - self.rhoF)
-        self.lB = (self.kb * self.T) / (self.delta_m * self.g) # Boltzmann length
+        self.lB = (self.kb * self.T) / (self.delta_m * self.g)  # Boltzmann length
 
     def _gamma_xy(self, zi_1):
         """
@@ -39,6 +40,7 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
 
         :return: gamma_x = gamma_y = 6πη(z)R : the gamma value for x and y trajectories dependant of z(t-dt).
         """
+        # Libchaber formula
         self.gamma_xy = (
             6
             * np.pi
@@ -70,11 +72,13 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
             * np.pi
             * self.R
             * self.eta
-            * ((
-               (6 * zi_1 ** 2 + 2 * self.R * zi_1)
-               / (6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2)
+            * (
+                (
+                    (6 * zi_1 ** 2 + 2 * self.R * zi_1)
+                    / (6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2)
+                )
+                ** (-1)
             )
-            ** (-1))
         )
 
         # print("gamma_z = ", self.gamma_z)
@@ -90,13 +94,13 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
         :return: The white noise a at the position z(t-dt) for a gamma value on x/y or z.
         """
         import warnings
+
         warnings.simplefilter("error")
         # print("gamma = ", gamma)
-        try :
+        try:
             a = np.sqrt(2 * self.kb * self.T / gamma)
         except RuntimeWarning:
             print("gamma =", gamma)
-
 
         return a
 
@@ -120,19 +124,33 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
         if axis == "z":
             gamma = self._gamma_z
             weight = (self.delta_m / gamma(zi_1)) * self.g * self.dt
-            elec = self.lD * (4*self.kb*self.T) * np.exp(- zi_1 / self.lD) / gamma(zi_1) * self.dt
+            elec = (
+                (4 * self.kb * self.T)
+                / (self.lD)
+                * np.exp(-zi_1 / self.lD)
+                / gamma(zi_1)
+                * self.dt
+            )
+            correction = (
+                self.kb
+                * self.T
+                * (42 * self.R * zi_1 ** 2 + 24 * self.R ** 2 * zi_1 + 4 * self.R ** 3)
+                / ((6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2) ** 2)
+                / gamma(zi_1)
+                * self.dt
+            )
 
-            # print(self.delta_m)
         else:
             gamma = self._gamma_xy
             elec = 0
             weight = 0
+            correction = 0
 
-        xi = (xi_1 - weight + elec + gamma(zi_1) * rng * self.dt)
+        xi = xi_1 - weight + elec + correction + self._a(gamma(zi_1)) * rng * self.dt
 
         if axis == "z":
-            if xi < 10e-9:
-                xi =  10e-9
+            if xi <= 0:
+                xi = -xi
 
         return xi
 
@@ -147,6 +165,10 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
         rngz = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
             0.0, 1, size=self.Nt
         )
+
+        self.rngx = rngx
+        self.rngy = rngy
+        self.rngz = rngz
 
         x = np.zeros(self.Nt)
         y = np.zeros(self.Nt)
@@ -171,10 +193,12 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D): #, Langevin3D
 
 
 if __name__ == "__main__":
-    langevin3D = RigidWallOverdampedLangevin3D(dt=1/60, Nt=100000, R=1.5e-6, rho=1050, x0=(0., 0., 1.e-6))
+    langevin3D = RigidWallOverdampedLangevin3D(
+        dt=1 / 60, Nt=100000, R=1.5e-6, rho=1050, x0=(0.0, 0.0, 1.0e-6)
+    )
 
     langevin3D.trajectory()
-    #langevin3D.plotTrajectory()
+    # langevin3D.plotTrajectory()
 
     MSDx = langevin3D.MSD1D("x", output=True)
     MSDy = langevin3D.MSD1D("y", output=True)
@@ -191,21 +215,21 @@ if __name__ == "__main__":
         label="MSDx inertial",
     )
     plt.loglog(
-        langevin3D.t[langevin3D.list_dt_MSD] ,
+        langevin3D.t[langevin3D.list_dt_MSD],
         MSDy,
         color="green",
         linewidth=0.8,
         label="MSDy inertial",
     )
     plt.loglog(
-        langevin3D.t[langevin3D.list_dt_MSD] ,
+        langevin3D.t[langevin3D.list_dt_MSD],
         MSDz,
         color="blue",
         linewidth=0.8,
         label="MSDz inertial",
     )
     plt.plot(
-        langevin3D.t[langevin3D.list_dt_MSD] ,
+        langevin3D.t[langevin3D.list_dt_MSD],
         (2 * langevin3D.kb * langevin3D.T / langevin3D.gamma)
         * langevin3D.t[langevin3D.list_dt_MSD],
         color="black",

@@ -70,7 +70,7 @@ class Langevin3D:
         plt.ylabel("Position [m]")
         plt.title("3D trajectory of free particale")
         plt.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2))
-        plt.legend()
+        plt.legend(loc="upper left")
         plt.tight_layout()
         plt.show()
 
