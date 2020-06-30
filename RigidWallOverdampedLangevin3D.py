@@ -122,35 +122,33 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         """
 
         if axis == "z":
-            gamma = self._gamma_z
-            weight = (self.delta_m / gamma(zi_1)) * self.g * self.dt
+            gamma = self._gamma_z(zi_1)
+            weight = self.delta_m * self.g * self.dt / gamma
             elec = (
                 (4 * self.kb * self.T)
                 / (self.lD)
                 * np.exp(-zi_1 / self.lD)
-                / gamma(zi_1)
-                * self.dt
+                * self.dt / gamma
             )
             correction = (
                 self.kb
                 * self.T
                 * (42 * self.R * zi_1 ** 2 + 24 * self.R ** 2 * zi_1 + 4 * self.R ** 3)
                 / ((6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2) ** 2)
-                / gamma(zi_1)
-                * self.dt
+                * self.dt / gamma
             )
 
         else:
-            gamma = self._gamma_xy
+            gamma = self._gamma_xy(zi_1)
             elec = 0
             weight = 0
             correction = 0
 
-        xi = xi_1 - weight + elec + correction + self._a(gamma(zi_1)) * rng * self.dt
+        xi = xi_1 - weight + elec + correction + self._a(gamma) * rng * self.dt
 
         if axis == "z":
-            if xi <= 0:
-                xi = -xi
+           if xi <= 0:
+               xi = -xi
 
         return xi
 
