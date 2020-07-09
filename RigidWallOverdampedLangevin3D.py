@@ -196,8 +196,7 @@ if __name__ == "__main__":
     )
     langevin3D.trajectory()
     print(time.time() - t )
-
-    # # langevin3D.plotTrajectory()
+    langevin3D.plotTrajectory()
     #
     # MSDx = langevin3D.MSD1D("x", output=True)
     # MSDy = langevin3D.MSD1D("y", output=True)
