@@ -83,7 +83,7 @@ class InertialLangevin3D(Langevin3D):
 
 
 if __name__ == "__main__":
-    langevin3D = InertialLangevin3D(1e-11, 1000000, 1e-6, 4)
+    langevin3D = InertialLangevin3D(1e-7, 1000000, 1e-6, 1050)
 
     langevin3D.trajectory()
     langevin3D.plotTrajectory()
