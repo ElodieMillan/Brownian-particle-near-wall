@@ -88,14 +88,12 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         """
         Intern methode of RigidWallInertialLangevin3D class - white noise a = sqrt(k T gamma) at t-dt.
 
-        :param zi_1: float - Perpendicular position by the wall z at (t - dt).
         :param gamma: the gamma value used (depends of the coordinate used).
 
         :return: The white noise a at the position z(t-dt) for a gamma value on x/y or z.
         """
 
         a = np.sqrt(2 * self.kb * self.T / gamma)
-
 
         return a
 
@@ -107,11 +105,7 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         :param xi_2: float - Position of the particule at (t - 2dt).
         :param zi_1: float - Perpendicular position by the wall z at (t - dt).
         :param rng: a random number for dBt/dt white noise.
-        :param axis: The axis used : put "z"
-        :return:
-        :param xi1: Position of the particule at (t - dt).
-        :param xi2: Position of the particule at (t - 2dt).
-
+        :param axis: The axis used : put "z" if z axis or None if x/y axis.
 
         :return: The position of the particule at time t.
         """
@@ -150,7 +144,12 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         return xi
 
     def trajectory(self, output=False):
+        """
 
+        :param output: Boolean, if true function output x, y, z (default : false).
+
+        :return: return the x, y, z trajectory.
+        """
         rngx = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
             0.0, 1, size=self.Nt
         )
