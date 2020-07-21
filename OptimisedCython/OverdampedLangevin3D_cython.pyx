@@ -5,30 +5,18 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-
 cimport numpy as np
+from libcpp cimport bool
+
+DTYPE = np.float64
 
 cdef class Langevin3D:
     """
     Brownian motion generation.
     """
-    cdef public float dt
-    cdef public int Nt
-    cdef public float R
-    cdef public float eta
-    cdef public float T
-    cdef public (float, float, float) x0
-    cdef public float kb
-    cdef public float gamma
-    cdef public float a
-    cdef public float D
-    cdef public np.ndarray t
-    cdef public np.ndarray x
-    cdef public np.ndarray y
-    cdef public np.ndarray z
 
-    def __init__(self):
-        pass
+    #def __init__(self):
+    #    pass
     
     def __cinit__(self, float dt, int Nt, float R, float eta=0.001, float T=300, (float, float, float) x0=(0, 0, 0)):
         """
@@ -53,8 +41,11 @@ cdef class Langevin3D:
         self.a = np.sqrt((2 * self.kb * T) / self.gamma)
         self.D = (self.kb * T) / (self.gamma)
         self.t = np.arange(Nt) * dt
+        self.x = np.zeros(self.Nt, dtype = DTYPE)
+        self.y = np.zeros(self.Nt, dtype = DTYPE)
+        self.z = np.zeros(self.Nt, dtype = DTYPE)
 
-    cpdef np.ndarray trajectory(self, output=False, Nt=None):
+    cdef void trajectory(self):
         """
         Compute the trajectory of a Langevin3D particule.
 
@@ -63,12 +54,6 @@ cdef class Langevin3D:
         :return: return the x, y, z trajectory.
         """
 
-        self.x = np.zeros(self.Nt)
-        self.y = np.zeros(self.Nt)
-        self.z = np.zeros(self.Nt)
-
-        if Nt == None:
-            Nt = self.Nt
 
         self.x = self.x0[0] + np.cumsum(
             self.a * np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt)
@@ -80,10 +65,7 @@ cdef class Langevin3D:
             self.a * np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt)
         )
 
-        if output:
-            return self.x, self.y, self.z
-
-    cpdef void plotTrajectory(self):
+    cdef void plotTrajectory(self):
         """
         Plot the trajectory of the Langevin3D object.
         """
@@ -99,7 +81,7 @@ cdef class Langevin3D:
         plt.tight_layout()
         plt.show()
 
-    cpdef np.ndarray MSD1D(self, axis, output=False, plot=False):
+    cdef np.float64_t MSD1D(self,char axis, bool output=False, bool plot=False):
         """
         Compute the mean square displacement in 1 dimention.
 
@@ -128,7 +110,7 @@ cdef class Langevin3D:
             raise ValueError("axis should be equal to 'x' or 'y' or 'z'")
 
         NumberOfMSDPoint = len(self.list_dt_MSD)
-        self.MSD = np.zeros(NumberOfMSDPoint)
+        cdef np.float64_t MSD = np.zeros(NumberOfMSDPoint, dtype = DTYPE)
         for n, i in enumerate(self.list_dt_MSD):
             if i == 0:
                 self.MSD[n] = 0
@@ -159,7 +141,8 @@ cdef class Langevin3D:
         if output:
             return self.MSD
 
-    cpdef np.ndarray MSD3D(self, output=False, plot=False):
+
+    cdef void MSD3D(self, output=False, plot=False):
         """
         Compute the mean square displacement at 3D.
 
@@ -168,9 +151,9 @@ cdef class Langevin3D:
         :return: The mean square displacement in 3 dimension of the trajectory.
         """
         self.MSD3 = (
-            self.MSD1D("x", output=True)
-            + self.MSD1D("y", output=True)
-            + self.MSD1D("z", output=True)
+            self.MSD1D("x", output=True,plot=False)
+            + self.MSD1D("y", output=True,plot=False)
+            + self.MSD1D(axis = "z", output=True,plot=False)
         )
 
         if plot:
@@ -194,10 +177,10 @@ cdef class Langevin3D:
             plt.legend()
             plt.show()
 
-        if output:
-            return self.MSD3
+        #if output:
+        #    return self.MSD3
 
-    cpdef np.ndarray speedDistribution1D(
+    cdef void speedDistribution1D(
         self, axis, nbTimesIntervalle=1, bins=50, output=False, plot=False
     ):
         """
@@ -241,10 +224,10 @@ cdef class Langevin3D:
             plt.legend()
             plt.show()
 
-        if output:
-            return hist, binsPosition
+        #if output:
+        #    return hist, binsPosition
 
-    cpdef np.ndarray dXDistribution1D(
+    cdef void dXDistribution1D(
         self, axis, nbTimesIntervalle=1, bins=50, output=False, plot=False
     ):
         """
@@ -286,8 +269,8 @@ cdef class Langevin3D:
             plt.legend()
             plt.show()
 
-        if output:
-            return hist, binsPosition
+        #if output:
+        #    return hist, binsPosition
 
 
 def test():
