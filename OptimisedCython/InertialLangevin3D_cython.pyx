@@ -1,15 +1,35 @@
 # Élodie Millan
 # June 2020
 # Langevin equation 3D bulk for a free particule with inertia.
+# Using Cython to compile fast with C
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from OverdampedLangevin3D import Langevin3D
+from OverdampedLangevin3D_cython cimport Langevin3D
+
+cimport numpy as np
 
 
-class InertialLangevin3D(Langevin3D):
+cdef class InertialLangevin3D(Langevin3D):
+    """
+    Brownian motion generation with inertia.
+    """
+
+    cdef public float rho
+    cdef public float m
+    cdef public float tau
+    cdef public float a
+    cdef public float b
+    cdef public float c
+    cdef public np.ndarray x
+    cdef public np.ndarray y
+    cdef public np.ndarray z
+
     def __init__(self, dt, Nt, R, rho, eta=0.001, T=300, x0=(0, 0, 0)):
+        pass
+
+    def __cinit__(self, float dt, int Nt, float R, float rho, float eta=0.001, float T=300, (float, float, float) x0=(0, 0, 0)):
         """
 
         :param dt: Time step [s].
@@ -20,7 +40,7 @@ class InertialLangevin3D(Langevin3D):
         :param T: Temperature (default = 300 [k]).
         :param x0: Initial position of particule (default = (0,0,0) [m]).
         """
-        super().__init__(dt, Nt, R, eta=eta, T=T, x0=x0)
+        super().__cinit__(dt, Nt, R, eta=eta, T=T, x0=x0)
         self.rho = rho
 
         self.m = rho * (4 / 3) * np.pi * R ** 3
@@ -28,6 +48,7 @@ class InertialLangevin3D(Langevin3D):
         self.a = np.sqrt(2 * self.kb * self.T * self.gamma)  # Coef of the white noise
         self.b = 2 + dt / self.tau
         self.c = 1 + dt / self.tau
+
 
     def _PositionXi(self, xi1, xi2, rng):
         """
@@ -86,7 +107,7 @@ def test():
     langevin3D = InertialLangevin3D(1e-7, 10000, 1e-6, 1050)
 
     langevin3D.trajectory()
-    # langevin3D.plotTrajectory()
+    langevin3D.plotTrajectory()
     # MSDx = langevin3D.MSD1D("x", output=True)
     # MSDy = langevin3D.MSD1D("y", output=True)
     # MSDz = langevin3D.MSD1D("z", output=True)

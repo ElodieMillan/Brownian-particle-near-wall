@@ -1,16 +1,36 @@
 # Élodie Millan
-# June 2020
+# July 2020
 # Langevin equation 3D bulk for a free particule without inertia.
+# Using Cython to compile fast with C
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+cimport numpy as np
 
-class Langevin3D:
+cdef class Langevin3D:
     """
     Brownian motion generation.
     """
-    def __init__(self, dt, Nt, R, eta=0.001, T=300, x0=(0, 0, 0)):
+    cdef public float dt
+    cdef public int Nt
+    cdef public float R
+    cdef public float eta
+    cdef public float T
+    cdef public (float, float, float) x0
+    cdef public float kb
+    cdef public float gamma
+    cdef public float a
+    cdef public float D
+    cdef public np.ndarray t
+    cdef public np.ndarray x
+    cdef public np.ndarray y
+    cdef public np.ndarray z
+
+    def __init__(self):
+        pass
+    
+    def __cinit__(self, float dt, int Nt, float R, float eta=0.001, float T=300, (float, float, float) x0=(0, 0, 0)):
         """
         Constructor.
 
@@ -34,7 +54,7 @@ class Langevin3D:
         self.D = (self.kb * T) / (self.gamma)
         self.t = np.arange(Nt) * dt
 
-    def trajectory(self, output=False, Nt=None):
+    cpdef np.ndarray trajectory(self, output=False, Nt=None):
         """
         Compute the trajectory of a Langevin3D particule.
 
@@ -42,6 +62,10 @@ class Langevin3D:
         :param Nt : Number of point of times (default is the number give in the instance of the class).
         :return: return the x, y, z trajectory.
         """
+
+        self.x = np.zeros(self.Nt)
+        self.y = np.zeros(self.Nt)
+        self.z = np.zeros(self.Nt)
 
         if Nt == None:
             Nt = self.Nt
@@ -59,10 +83,11 @@ class Langevin3D:
         if output:
             return self.x, self.y, self.z
 
-    def plotTrajectory(self):
+    cpdef void plotTrajectory(self):
         """
         Plot the trajectory of the Langevin3D object.
         """
+        plt.figure()
         plt.plot(self.t, self.x, color="blue", linewidth=0.8, label="x")
         plt.plot(self.t, self.y, color="red", linewidth=0.8, label="y")
         plt.plot(self.t, self.z, color="green", linewidth=0.8, label="z")
@@ -74,7 +99,7 @@ class Langevin3D:
         plt.tight_layout()
         plt.show()
 
-    def MSD1D(self, axis, output=False, plot=False):
+    cpdef np.ndarray MSD1D(self, axis, output=False, plot=False):
         """
         Compute the mean square displacement in 1 dimention.
 
@@ -111,6 +136,7 @@ class Langevin3D:
             self.MSD[n] = np.mean((x[i:] - x[0:-i]) ** 2)
 
         if plot:
+            plt.figure()
             plt.loglog(
                 self.t[self.list_dt_MSD],
                 self.MSD,
@@ -133,7 +159,7 @@ class Langevin3D:
         if output:
             return self.MSD
 
-    def MSD3D(self, output=False, plot=False):
+    cpdef np.ndarray MSD3D(self, output=False, plot=False):
         """
         Compute the mean square displacement at 3D.
 
@@ -148,6 +174,7 @@ class Langevin3D:
         )
 
         if plot:
+            plt.figure()
             plt.loglog(
                 self.t[self.list_dt_MSD],
                 self.MSD3,
@@ -170,7 +197,7 @@ class Langevin3D:
         if output:
             return self.MSD3
 
-    def speedDistribution1D(
+    cpdef np.ndarray speedDistribution1D(
         self, axis, nbTimesIntervalle=1, bins=50, output=False, plot=False
     ):
         """
@@ -199,6 +226,7 @@ class Langevin3D:
         binsPosition = (bin_edges[:-1] + bin_edges[1:]) / 2
 
         if plot:
+            plt.figure()
             plt.plot(
                 binsPosition,
                 hist,
@@ -216,7 +244,7 @@ class Langevin3D:
         if output:
             return hist, binsPosition
 
-    def dXDistribution1D(
+    cpdef np.ndarray dXDistribution1D(
         self, axis, nbTimesIntervalle=1, bins=50, output=False, plot=False
     ):
         """
@@ -243,6 +271,7 @@ class Langevin3D:
         binsPosition = (bin_edges[:-1] + bin_edges[1:]) / 2
 
         if plot:
+            plt.figure()
             plt.plot(
                 binsPosition,
                 hist,
@@ -263,7 +292,6 @@ class Langevin3D:
 
 def test():
     langevin3D = Langevin3D(0.01, 500000, 1e-6)
-
     langevin3D.trajectory()
     # langevin3D.plotTrajectory()
     # langevin3D.MSD1D("x")
