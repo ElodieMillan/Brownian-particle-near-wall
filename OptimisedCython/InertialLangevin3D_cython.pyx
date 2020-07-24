@@ -1,36 +1,26 @@
-# Élodie Millan
-# June 2020
-# Langevin equation 3D bulk for a free particule with inertia.
-# Using Cython to compile fast with C
 
 import numpy as np
 import matplotlib.pyplot as plt
+cimport numpy as np
+import cython
 
+from OverdampedLangevin3D_cython import Langevin3D
 from OverdampedLangevin3D_cython cimport Langevin3D
 
-cimport numpy as np
+DTYPE = np.float64 # C type equivalent at a DTYPE_t
+ctypedef np.float64_t DTYPE_t
 
-
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
 cdef class InertialLangevin3D(Langevin3D):
     """
     Brownian motion generation with inertia.
     """
 
-    cdef public float rho
-    cdef public float m
-    cdef public float tau
-    cdef public float a
-    cdef public float b
-    cdef public float c
-    cdef public np.ndarray x
-    cdef public np.ndarray y
-    cdef public np.ndarray z
-
-    def __init__(self, dt, Nt, R, rho, eta=0.001, T=300, x0=(0, 0, 0)):
-        pass
-
-    def __cinit__(self, float dt, int Nt, float R, float rho, float eta=0.001, float T=300, (float, float, float) x0=(0, 0, 0)):
+    def __init__(self, DTYPE_t dt, unsigned long long int Nt, DTYPE_t R, DTYPE_t rho, DTYPE_t eta=0.001, DTYPE_t T=300, (DTYPE_t, DTYPE_t, DTYPE_t) x0=(0, 0, 0)):
         """
+
+        Constructor.
 
         :param dt: Time step [s].
         :param Nt: Number of time points.
@@ -40,17 +30,20 @@ cdef class InertialLangevin3D(Langevin3D):
         :param T: Temperature (default = 300 [k]).
         :param x0: Initial position of particule (default = (0,0,0) [m]).
         """
-        super().__cinit__(dt, Nt, R, eta=eta, T=T, x0=x0)
+        super(InertialLangevin3D, self).__init__(dt, Nt, R, eta=eta, T=T, x0=x0)
         self.rho = rho
-
         self.m = rho * (4 / 3) * np.pi * R ** 3
         self.tau = self.m / self.gamma
         self.a = np.sqrt(2 * self.kb * self.T * self.gamma)  # Coef of the white noise
         self.b = 2 + dt / self.tau
         self.c = 1 + dt / self.tau
+        self.x = np.zeros(self.Nt, dtype = DTYPE)
+        self.y = np.zeros(self.Nt, dtype = DTYPE)
+        self.z = np.zeros(self.Nt, dtype = DTYPE)
 
-
-    def _PositionXi(self, xi1, xi2, rng):
+    @cython.boundscheck(False) # turn off bounds-checking for entire function
+    @cython.wraparound(False)  # turn off negative index wrapping for entire function
+    cdef DTYPE_t _PositionXi(self, DTYPE_t xi1, DTYPE_t xi2, DTYPE_t rng):
         """
         Intern methode of InertialLangevin3D class - Position of a Brownian particule at time t.
 
@@ -67,27 +60,32 @@ cdef class InertialLangevin3D(Langevin3D):
 
         return xi
 
-    def trajectory(self, output=False, Nt=None):
+    @cython.boundscheck(False) # turn off bounds-checking for entire function
+    @cython.wraparound(False)  # turn off negative index wrapping for entire function
+    cdef void trajectory(self):
 
-        if Nt == None:
-            Nt = self.Nt
+        Nt = self.Nt
 
-        rngx = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
+
+        cdef np.ndarray[DTYPE_t, ndim=1] rngx = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
             0.0, 1, size=Nt
         )
-        rngy = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
+        cdef np.ndarray[DTYPE_t, ndim=1] rngy = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
             0.0, 1, size=Nt
         )
-        rngz = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
+        cdef np.ndarray[DTYPE_t, ndim=1] rngz = (1 / np.sqrt(self.dt)) * np.random.default_rng().normal(
             0.0, 1, size=Nt
         )
 
-        x = np.zeros(Nt)
-        y = np.zeros(Nt)
-        z = np.zeros(Nt)
+        cdef np.ndarray[DTYPE_t, ndim=1] x = np.zeros(self.Nt, dtype = DTYPE)
+        cdef np.ndarray[DTYPE_t, ndim=1] y = np.zeros(self.Nt, dtype = DTYPE)
+        cdef np.ndarray[DTYPE_t, ndim=1] z = np.zeros(self.Nt, dtype = DTYPE)
 
-        # 2 first values of trajectory compute with random trajectory.
-        x[0:2], y[0:2], z[0:2] = super().trajectory(output=True, Nt=2)
+
+        # 2 first values of trajectory.
+        x[0:2] = [self.x0[0], self.x0[0]]
+        y[0:2] = [self.x0[1], self.x0[1]]
+        z[0:2] = [self.x0[2], self.x0[2]]
 
         for i in range(2, Nt):
 
@@ -99,15 +97,17 @@ cdef class InertialLangevin3D(Langevin3D):
         self.y = y
         self.z = z
 
-        if output:
-            return self.x, self.y, self.z
-
 
 def test():
-    langevin3D = InertialLangevin3D(1e-7, 10000, 1e-6, 1050)
+    langevin3D = InertialLangevin3D(1e-7, 2000000, 1e-6, 1050)
 
     langevin3D.trajectory()
-    langevin3D.plotTrajectory()
+    # langevin3D.plotTrajectory()
+    #
+    # langevin3D.MSD1D("x", plot=True)
+    # langevin3D.MSD1D("y", plot=True)
+    # langevin3D.MSD1D("z", plot=True)
+
     # MSDx = langevin3D.MSD1D("x", output=True)
     # MSDy = langevin3D.MSD1D("y", output=True)
     # MSDz = langevin3D.MSD1D("z", output=True)

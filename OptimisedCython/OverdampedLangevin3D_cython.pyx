@@ -1,7 +1,3 @@
-# Élodie Millan
-# July 2020
-# Langevin equation 3D bulk for a free particule without inertia.
-# Using Cython to compile fast with C
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,13 +12,7 @@ cdef class Langevin3D:
     Brownian motion generation.
     """
 
-    #def __init__(self):
-    #    pass
-
-
-
-
-    def __init__(self, double dt, unsigned long long int Nt, double R, double eta=0.001, double T=300., (double, double, double) x0=(0., 0., 0.)):
+    def __init__(self, DTYPE_t dt, unsigned long long int Nt, DTYPE_t R, DTYPE_t eta=0.001, DTYPE_t T=300., (DTYPE_t, DTYPE_t, DTYPE_t) x0=(0., 0., 0.)):
         """
         Constructor.
 
@@ -40,14 +30,17 @@ cdef class Langevin3D:
         self.T = T
         self.x0 = x0
 
+        self.m = 0 #non inertial value
         self.kb = 1.38e-23
         self.gamma = 6 * np.pi * eta * R
+        self.tau = 1
         self.a = np.sqrt((2 * self.kb * T) / self.gamma)
         self.D = (self.kb * T) / (self.gamma)
         self.t = np.arange(Nt) * dt
         self.x = np.zeros(self.Nt, dtype = DTYPE)
         self.y = np.zeros(self.Nt, dtype = DTYPE)
         self.z = np.zeros(self.Nt, dtype = DTYPE)
+        self.list_dt_MSD = np.array([], dtype=np.int)
 
 
     @cython.boundscheck(False) # turn off bounds-checking for entire function
@@ -56,7 +49,6 @@ cdef class Langevin3D:
         """
         Compute the trajectory of a Langevin3D particule.
 
-        :param output: Boolean, if true function output x, y, z (default : false).
         :param Nt : Number of point of times (default is the number give in the instance of the class).
         :return: return the x, y, z trajectory.
         """
@@ -81,7 +73,7 @@ cdef class Langevin3D:
          plt.plot(self.t, self.z, color="green", linewidth=0.8, label="z")
          plt.xlabel("Time [s]")
          plt.ylabel("Position [m]")
-         plt.title("3D trajectory of free particale")
+         plt.title("3D trajectory of free particle (using Cython)")
          plt.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2))
          plt.legend(loc="upper right")
          plt.tight_layout()
@@ -96,7 +88,6 @@ cdef class Langevin3D:
          :param plot: Boolean, if true plot MSD1D (default : false).
          :return: The mean square displacement in 1 dimension of the "axis" trajectory.
          """
-         self.list_dt_MSD = np.array([], dtype=np.int)
          for i in range(len(str(self.Nt)) - 1):
              # Take just 10 points by decade.
              self.list_dt_MSD = np.concatenate(
@@ -114,9 +105,10 @@ cdef class Langevin3D:
              x = self.z
          else:
              raise ValueError("axis should be equal to 'x' or 'y' or 'z'")
-    
+
          NumberOfMSDPoint = len(self.list_dt_MSD)
-         cdef np.float64_t MSD = np.zeros(NumberOfMSDPoint, dtype = DTYPE)
+         cdef np.ndarray MSD = np.zeros(NumberOfMSDPoint, dtype = DTYPE)
+         self.MSD = MSD
          for n, i in enumerate(self.list_dt_MSD):
              if i == 0:
                  self.MSD[n] = 0
@@ -126,19 +118,35 @@ cdef class Langevin3D:
          if plot:
              plt.figure()
              plt.loglog(
-                 self.t[self.list_dt_MSD],
+                 self.t[self.list_dt_MSD]/self.tau,
                  self.MSD,
+                 "o",
                  color="red",
                  linewidth=0.8,
-                 label="MSD" + axis,
+                 label="Experimental MSD" + axis,
              )
              plt.plot(
-                 self.t[self.list_dt_MSD],
+                 self.t[self.list_dt_MSD]/self.tau,
                  (2 * self.kb * self.T / self.gamma) * self.t[self.list_dt_MSD],
                  linewidth=0.8,
-                 label="Theory : " + axis + " = 2D t",
+                 color="blue",
+                 label="Non inertial theory : " + axis + " = 2D t",
              )
-             plt.xlabel("Times t [s]")
+
+             if self.tau != 1:
+                 plt.plot(self.t[self.list_dt_MSD] / self.tau,
+                          (self.kb * self.T / (self.m)) * self.t[self.list_dt_MSD]**2,
+                          linewidth=1.2,
+                          linestyle="-",
+                          color="green",
+                          label="Max-Boltz theory: x = $(k_b T / m) t^2$")
+
+                 plt.xlabel("Times t/$ \\tau $")
+                 plt.text(np.max(self.t[self.list_dt_MSD]/self.tau)/10, np.min(self.MSD),
+                          "$\\tau$ = {:.2e} s".format(self.tau))
+             else:
+                 plt.xlabel("Times t [s]")
+
              plt.ylabel("MSD 1D [m²]")
              plt.title("Mean square displacement 1D")
              plt.legend()
@@ -165,14 +173,14 @@ cdef class Langevin3D:
         if plot:
             plt.figure()
             plt.loglog(
-                self.t[self.list_dt_MSD],
+                self.t[self.list_dt_MSD]/self.tau,
                 self.MSD3,
                 color="red",
                 linewidth=0.8,
                 label="MSD3D ",
             )
             plt.plot(
-                self.t[self.list_dt_MSD],
+                self.t[self.list_dt_MSD]/self.tau,
                 (2 * 3 * self.kb * self.T / self.gamma) * self.t[self.list_dt_MSD],
                 linewidth=0.8,
                 label="Theory : x = 6D t",
@@ -281,11 +289,11 @@ cdef class Langevin3D:
 def test():
     langevin3D = Langevin3D(0.01, 1000000, 1e-6)
     langevin3D.trajectory()
-    print(langevin3D.x)
-    # langevin3D.plotTrajectory()
-    # langevin3D.MSD1D("x")
-    # langevin3D.MSD1D("y")
-    # langevin3D.MSD1D("z")
+
+    langevin3D.plotTrajectory()
+    langevin3D.MSD1D("x", plot=True)
+    langevin3D.MSD1D("y", plot=True)
+    langevin3D.MSD1D("z", plot=True)
     # langevin3D.MSD3D(plot=True)
     # #langevin3D.speedDistribution1D("x", 10, plot=True)
     # langevin3D.dXDistribution1D("x", 10, plot=True)

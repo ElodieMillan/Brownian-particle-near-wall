@@ -10,6 +10,7 @@ class Langevin3D:
     """
     Brownian motion generation.
     """
+
     def __init__(self, dt, Nt, R, eta=0.001, T=300, x0=(0, 0, 0)):
         """
         Constructor.
@@ -263,12 +264,12 @@ class Langevin3D:
 
 def test():
     langevin3D = Langevin3D(0.01, 500000, 1e-6)
-
     langevin3D.trajectory()
+
     # langevin3D.plotTrajectory()
-    # langevin3D.MSD1D("x")
-    # langevin3D.MSD1D("y")
-    # langevin3D.MSD1D("z")
+    # langevin3D.MSD1D("x", plot=True)
+    # langevin3D.MSD1D("y", plot=True)
+    # langevin3D.MSD1D("z", plot=True)
     # langevin3D.MSD3D(plot=True)
     # #langevin3D.speedDistribution1D("x", 10, plot=True)
     # langevin3D.dXDistribution1D("x", 10, plot=True)
