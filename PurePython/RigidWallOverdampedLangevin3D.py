@@ -3,10 +3,9 @@
 # Langevin equation 3D for a free particule close to a rigid wall without inertia and with weight.
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 # from OverdampedLangevin3D import Langevin3D
-from InertialLangevin3D import InertialLangevin3D
+from PurePython.InertialLangevin3D import InertialLangevin3D
 
 
 class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D

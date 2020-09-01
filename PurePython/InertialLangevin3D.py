@@ -3,7 +3,6 @@
 # Langevin equation 3D bulk for a free particule with inertia.
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from OverdampedLangevin3D import Langevin3D
 

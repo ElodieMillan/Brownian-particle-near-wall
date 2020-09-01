@@ -17,7 +17,8 @@ cdef class InertialLangevin3D(Langevin3D):
     Brownian motion generation with inertia.
     """
 
-    def __init__(self, DTYPE_t dt, unsigned long long int Nt, DTYPE_t R, DTYPE_t rho, DTYPE_t eta=0.001, DTYPE_t T=300, (DTYPE_t, DTYPE_t, DTYPE_t) x0=(0, 0, 0)):
+    def __init__(self, DTYPE_t dt, unsigned long long int Nt, DTYPE_t R, DTYPE_t rho, DTYPE_t eta=0.001,
+                 DTYPE_t T=300, (DTYPE_t, DTYPE_t, DTYPE_t) x0=(0, 0, 0)):
         """
 
         Constructor.

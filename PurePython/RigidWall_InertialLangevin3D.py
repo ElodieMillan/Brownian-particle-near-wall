@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from RigidWallOverdampedLangevin3D import RigidWallOverdampedLangevin3D
+from PurePython.RigidWallOverdampedLangevin3D import RigidWallOverdampedLangevin3D
 
 
 class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de RigidWallOverdampedLangevin3D

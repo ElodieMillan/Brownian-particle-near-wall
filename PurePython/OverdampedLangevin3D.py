@@ -43,19 +43,20 @@ class Langevin3D:
         :param Nt : Number of point of times (default is the number give in the instance of the class).
         :return: return the x, y, z trajectory.
         """
-
         if Nt == None:
             Nt = self.Nt
 
-        self.x = self.x0[0] + np.cumsum(
-            self.a * np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt)
-        )
-        self.y = self.x0[1] + np.cumsum(
-            self.a * np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt)
-        )
-        self.z = self.x0[2] + np.cumsum(
-            self.a * np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt)
-        )
+        rngx = np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt) * self.a
+        rngx[0] = self.x0[0]
+        self.x = np.cumsum(rngx)
+
+        rngy = np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt) * self.a
+        rngx[0] = self.x0[1]
+        self.y = np.cumsum(rngy)
+
+        rngz = np.random.default_rng().normal(0.0, np.sqrt(self.dt), size=Nt) * self.a
+        rngx[0] = self.x0[2]
+        self.z = np.cumsum(rngz)
 
         if output:
             return self.x, self.y, self.z
@@ -69,7 +70,6 @@ class Langevin3D:
         plt.plot(self.t, self.z, color="green", linewidth=0.8, label="z")
         plt.xlabel("Time [s]")
         plt.ylabel("Position [m]")
-        plt.title("3D trajectory of free particale")
         plt.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2))
         plt.legend(loc="upper right")
         plt.tight_layout()
@@ -152,20 +152,21 @@ class Langevin3D:
             plt.loglog(
                 self.t[self.list_dt_MSD],
                 self.MSD3,
-                color="red",
-                linewidth=0.8,
+                "o",
+                color="darkorchid",
+                linewidth=1.,
                 label="MSD3D ",
             )
             plt.plot(
                 self.t[self.list_dt_MSD],
                 (2 * 3 * self.kb * self.T / self.gamma) * self.t[self.list_dt_MSD],
-                linewidth=0.8,
+                linewidth=0.6,
+                color="black",
                 label="Theory : x = 6D t",
             )
             plt.xlabel("Times t [s]")
             plt.ylabel("MSD 3D [m²]")
-            plt.title("Mean square displacement 3D")
-            plt.legend()
+            plt.legend(fontsize='x-small', loc='upper left')
             plt.show()
 
         if output:

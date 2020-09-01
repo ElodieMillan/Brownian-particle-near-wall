@@ -1,7 +1,7 @@
 import timeit
 import sys
 
-sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020")
+sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020\PurePython")
 
 # ---------------------------------------
 # ------- Overdamped without wall -------
@@ -20,13 +20,26 @@ sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020")
 # ------- Inertial without wall ---------
 # ---------------------------------------
 
+# cy = timeit.timeit(
+#     "InertialLangevin3D_cython.test()",
+#     setup="import InertialLangevin3D_cython",
+#     number=1,
+# )
+# py = timeit.timeit(
+#     "InertialLangevin3D.test()", setup="import InertialLangevin3D", number=1
+# )
+
+# ---------------------------------------
+# ------- Rigid wall Overdamped ---------
+# ---------------------------------------
+
 cy = timeit.timeit(
-    "InertialLangevin3D_cython.test()",
-    setup="import InertialLangevin3D_cython",
+    "RigidWallOverdampedLangevin3D_cython.test()",
+    setup="import RigidWallOverdampedLangevin3D_cython",
     number=1,
 )
 py = timeit.timeit(
-    "InertialLangevin3D.test()", setup="import InertialLangevin3D", number=1
+    "RigidWallOverdampedLangevin3D.test()", setup="RigidWallOverdampedLangevin3D", number=1
 )
 
 # ---------------------------------------
