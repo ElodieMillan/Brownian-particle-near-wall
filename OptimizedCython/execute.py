@@ -40,40 +40,42 @@ sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020\PurePython")
  ---------------------------------------
 """
 
-# cy = timeit.timeit(
-#     "RigidWallOverdampedLangevin3D_cython.test()",
-#     setup="import RigidWallOverdampedLangevin3D_cython",
-#     number=1,
-# )
-# py = timeit.timeit(
-#     "RigidWallOverdampedLangevin3D.test()", setup="import RigidWallOverdampedLangevin3D", number=1
-# )
+cy_RWO = timeit.timeit(
+    "RigidWallOverdampedLangevin3D_cython.test()",
+    setup="import RigidWallOverdampedLangevin3D_cython",
+    number=1,
+)
+py_RWO = timeit.timeit(
+    "RigidWallOverdampedLangevin3D.test()", setup="import RigidWallOverdampedLangevin3D", number=1
+)
 
-# """
-#  ---------------------------------------
-#  ------- Rigid wall INERTIAL ---------
-#  ---------------------------------------
-# """
+print("=========== RIGID WALL OVERDAMPED ============")
+print("----- Cython speed = {:.5f} s".format(cy_RWO))
+print("----- Python speed = {:.5f} s".format(py_RWO))
+print("-->Cython is {:.5f} x faster than Python !".format((py_RWO / cy_RWO)))
+print("=============================================")
+print("")
 
-cy = timeit.timeit(
+"""
+ ---------------------------------------
+ ------- Rigid wall INERTIAL ---------
+ ---------------------------------------
+"""
+
+cy_RWI = timeit.timeit(
     "RigidWall_InertialLangevin3D_cython.test()",
     setup="import RigidWall_InertialLangevin3D_cython",
     number=1,
 )
-py = timeit.timeit(
+py_RWI = timeit.timeit(
     "RigidWall_InertialLangevin3D.test()", setup="import RigidWall_InertialLangevin3D", number=1
 )
 
-"""
-========================================================================
-           SOME PRINTS
-========================================================================
-"""
-
-
-print("----- Cython speed = {:.5f} s".format(cy))
-print("----- Python speed = {:.5f} s".format(py))
-print("-->Cython is {:.5f} x faster than Python !".format((py / cy)))
+print("=========== RIGID WALL INERTIAL =============")
+print("----- Cython speed = {:.5f} s".format(cy_RWI))
+print("----- Python speed = {:.5f} s".format(py_RWI))
+print("-->Cython is {:.5f} x faster than Python !".format((py_RWI / cy_RWI)))
+print("=============================================")
 
 
 """ 
