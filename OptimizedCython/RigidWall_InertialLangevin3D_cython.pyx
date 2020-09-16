@@ -8,23 +8,21 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libc.math cimport exp, sqrt
-from cython.parallel cimport parallel, prange
 
 from RigidWallOverdampedLangevin3D_cython import RigidWallOverdampedLangevin3D
 
-
-class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de RigidWallOverdampedLangevin3D
+class RigidWallInertialLangevin3D( RigidWallOverdampedLangevin3D ):
     def __init__(self, dt, Nt, R, rho, rhoF=1000.0, eta=0.001, T=300.0, x0=None):
         """
 
-        :param dt: float - Time step [s].
+        :param dt: double - Time step [s].
         :param Nt: int - Number of time points.
-        :param R: float - Radius of particule [m].
-        :param rho: float - Volumic mass of the particule [kg/m³].
-        :param rhoF: float - Volumic mass of the fluid [kg/m³] (DEFAULT = 1000 [kg/m³]).
-        :param eta: float - Fluid viscosity (DEFAULT = 0.001 [Pa/s]).
-        :param T: float - Temperature (DEFAULT = 300 [k]).
-        :param x0: array float - Initial position of particule (DEFAULT = (0,0,R) [m]).
+        :param R: double - Radius of particule [m].
+        :param rho: double - Volumic mass of the particule [kg/m³].
+        :param rhoF: double - Volumic mass of the fluid [kg/m³] (DEFAULT = 1000 [kg/m³]).
+        :param eta: double - Fluid viscosity (DEFAULT = 0.001 [Pa/s]).
+        :param T: double - Temperature (DEFAULT = 300 [k]).
+        :param x0: array double - Initial position of particule (DEFAULT = (0,0,R) [m]).
         """
         if x0 == None:
             x0 = (0.0, 0.0, R)
@@ -33,6 +31,7 @@ class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de 
         self.gamma_mean = 6 * np.pi * eta * R # average of gamma
         self.tau_mean = self.m / self.gamma_mean # average of tau
 
+    @cython.profile(True)
     def trajectory(self, output=False):
         """
 
@@ -56,6 +55,7 @@ class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de 
         res[0,0:2] = [self.x0[0],self.x0[0]]
         res[1,0:2] = [self.x0[1], self.x0[1]]
         res[2,0:2] = [self.x0[2], self.x0[2]]
+
         res = np.asarray(trajectory_cython(self.Nt, rngx, rngy, rngz, res, self.delta_m, self.g, self.dt,
                                            self.kb, self.T, self.lD, self.R, self.eta, self.m))
         self.x = res[0,:]
@@ -70,16 +70,24 @@ class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de 
 CYTHON We put all methode as function out of the class (Object as Cython is complex).
 """
 cdef double pi = np.pi
-
 cdef double gam_xy
+cdef double gam_z
+cdef double noise
+cdef double gamma
+cdef double weight
+cdef double elec
+cdef double b
+cdef double c
+cdef double xi
+cdef double zi
 
 
-
+@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double gamma_xy(double zi_1, double R, double eta) nogil:
+cdef double gamma_xy(double zi_1, double R, double eta):
     """
     :param zi_1: Particule position at time t-dt.
     :param R: Particule ray.
@@ -105,13 +113,12 @@ cdef double gamma_xy(double zi_1, double R, double eta) nogil:
 
     return gam_xy
 
-cdef double gam_z
-
+@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double gamma_z(double zi_1, double R, double eta) nogil:
+cdef double gamma_z(double zi_1, double R, double eta):
     """
     :param zi_1: Particule position at time t-dt.
     :param R: Particule ray.
@@ -121,28 +128,27 @@ cdef double gamma_z(double zi_1, double R, double eta) nogil:
     """
     # Padé formula
     gam_z = (
-            6
-            * pi
-            * R
-            * eta
-            * (
-                    (
-                            (6 * zi_1 ** 2 + 2 * R * zi_1)
-                            / (6 * zi_1 ** 2 + 9 * R * zi_1 + 2 * R ** 2)
-                    )
-                    ** (-1)
+        6
+        * pi
+        * R
+        * eta
+        * (
+            (
+                (6 * zi_1 ** 2 + 2 * R * zi_1)
+                / (6 * zi_1 ** 2 + 9 * R * zi_1 + 2 * R ** 2)
             )
+            ** (-1)
+        )
     )
 
     return gam_z
 
-cdef double noise
-
+@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double a(double gamma, double kb, double T) nogil:
+cdef double a(double gamma, double kb, double T):
     """
     :param gamma: Gamma on x/y or z (depend of the model).
     :param kb: Boltzmann constant.
@@ -154,22 +160,16 @@ cdef double a(double gamma, double kb, double T) nogil:
 
     return noise
 
+# cdef double RNG():
+#     cdef double rng =
 
-cdef double gamma
-cdef double weight
-cdef double elec
-cdef double b
-cdef double c
-cdef double xi
-cdef double zi
-
-
+@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
 cdef double positionXYi_cython(double xi_1, double xi_2, double zi_1, double rng, double dt,
-                               double kb, double T, double R, double eta, double m) nogil:
+                               double kb, double T, double R, double eta, double m):
 
     """
     :param xi_1: Position of the particule at (t - dt).
@@ -191,14 +191,16 @@ cdef double positionXYi_cython(double xi_1, double xi_2, double zi_1, double rng
     b = 2 + dt * gamma / m
     c = 1 + dt * gamma / m
     xi = 1/c * ( b * xi_1 - xi_2 + a(gamma, kb, T) * (dt ** 2 / m) * rng)
+
     return xi
 
+@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
 cdef double positionZi_cython(double zi_1, double zi_2, double rng, double delta_m, double g, double dt,
-                               double kb, double T, double lD, double R, double eta, double m) nogil:
+                               double kb, double T, double lD, double R, double eta, double m):
     """
     :param xi_1: Position of the particule at (t - dt).
     :param zi_1: Perpendicular position by the wall z at (t - dt).
@@ -225,6 +227,7 @@ cdef double positionZi_cython(double zi_1, double zi_2, double rng, double delta
 
     return zi
 
+@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -252,12 +255,11 @@ cdef double[:,:] trajectory_cython(unsigned long int Nt,
     
     :return: X, Y, Z trajectory compute with Cython (faster).
     """
-    cdef long int i
-    with nogil:
-        for i in range(2, Nt):
-            res[0,i] = positionXYi_cython(res[0,i - 1], res[0,i - 2], res[2,i - 1], rngx[i], dt, kb, T, R, eta, m)
-            res[1,i] = positionXYi_cython(res[1,i - 1], res[1,i - 2], res[2,i - 1], rngy[i], dt, kb, T, R, eta, m)
-            res[2,i] = positionZi_cython(res[2,i - 1], res[2,i - 2], rngz[i], delta_m, g, dt, kb, T, lD, R, eta, m)
+    cdef unsigned long int i
+    for i in range(2, Nt):
+        res[0,i] = positionXYi_cython(res[0,i - 1], res[0,i - 2], res[2,i - 1], rngx[i], dt, kb, T, R, eta, m)
+        res[1,i] = positionXYi_cython(res[1,i - 1], res[1,i - 2], res[2,i - 1], rngy[i], dt, kb, T, R, eta, m)
+        res[2,i] = positionZi_cython(res[2,i - 1], res[2,i - 2], rngz[i], delta_m, g, dt, kb, T, lD, R, eta, m)
 
     return res
 
