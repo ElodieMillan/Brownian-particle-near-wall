@@ -12,7 +12,7 @@ from libc.math cimport exp, sqrt
 from InertialLangevin3D_cython import InertialLangevin3D
 
 
-class RigidWallOverdampedLangevin3D(InertialLangevin3D):
+class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
     def __init__(self, dt, Nt, R, rho, rhoF=1000.0, eta=0.001, T=300.0, x0=None):
         """
         :param dt: float - Time step [s].
@@ -194,7 +194,7 @@ cdef double a(double gamma, double kb, double T):
     
     :return: The white noise a at the position z(t-dt) for a gamma value on x/y or z.
     """
-    cdef double noise = sqrt(2 * kb * T / gamma)  #**(1/2)
+    cdef double noise = sqrt(2 * kb * T / gamma)
 
     return noise
 
@@ -311,7 +311,7 @@ def test():
     langevin3D = RigidWallOverdampedLangevin3D(
         dt=1 / 60, Nt=1000000, R=1.5e-6, rho=1050, x0=(0.0, 0.0, 1.0e-6)
     )
-    # langevin3D.trajectory()
+    langevin3D.trajectory()
 
     # langevin3D.plotTrajectory()
     #
