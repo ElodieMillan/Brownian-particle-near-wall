@@ -1,1 +1,4 @@
 *.npy
+*.html
+*.pyd
+*.c

@@ -82,10 +82,10 @@ class InertialLangevin3D(Langevin3D):
 
 
 def test():
-    langevin3D = InertialLangevin3D(1e-7, 2000000, 1e-6, 1050)
+    langevin3D = InertialLangevin3D(1e-7, 5000000, 1e-6, 1050)
 
     langevin3D.trajectory()
-    #langevin3D.plotTrajectory()
+    # langevin3D.plotTrajectory()
     # MSDx = langevin3D.MSD1D("x", output=True)
     # MSDy = langevin3D.MSD1D("y", output=True)
     # MSDz = langevin3D.MSD1D("z", output=True)
@@ -155,3 +155,6 @@ def test():
     #
     # # langevin3D.speedDistribution1D("x", 10, plot=True)
     # langevin3D.dXDistribution1D("x", 10, plot=True)
+
+if __name__ == '__main__':
+    test()

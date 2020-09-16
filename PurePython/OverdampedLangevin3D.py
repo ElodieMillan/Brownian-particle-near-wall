@@ -274,3 +274,6 @@ def test():
     # langevin3D.MSD3D(plot=True)
     # #langevin3D.speedDistribution1D("x", 10, plot=True)
     # langevin3D.dXDistribution1D("x", 10, plot=True)
+
+if __name__ == '__main__':
+    test()

@@ -5,7 +5,7 @@
 import numpy as np
 
 # from OverdampedLangevin3D import Langevin3D
-from PurePython.InertialLangevin3D import InertialLangevin3D
+from InertialLangevin3D import InertialLangevin3D
 
 
 class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
@@ -101,7 +101,6 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         Intern methode of InertialLangevin3D class - Position of a Brownian particule inertial with rigid wall, at time t.
 
         :param xi_1: float - Position of the particule at (t - dt).
-        :param xi_2: float - Position of the particule at (t - 2dt).
         :param zi_1: float - Perpendicular position by the wall z at (t - dt).
         :param rng: a random number for dBt/dt white noise.
         :param axis: The axis used : put "z" if z axis or None if x/y axis.
@@ -123,7 +122,7 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
                self.kb
                * self.T
                * (42 * self.R * zi_1 ** 2 + 24 * self.R ** 2 * zi_1 + 4 * self.R ** 3)
-               / ((6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2) * (6*zi_1**2 + 2*self.R*zi_1) )
+               / ( (6 * zi_1 ** 2 + 9 * self.R * zi_1 + 2 * self.R ** 2) * (6*zi_1**2 + 2*self.R*zi_1) )
                * self.dt
                / gamma
             )
@@ -185,16 +184,13 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
             return self.x, self.y, self.z
 
 
-if __name__ == "__main__":
-    import time
-
-    t = time.time()
+def test():
     langevin3D = RigidWallOverdampedLangevin3D(
-        dt=1 / 60, Nt=10000, R=1.5e-6, rho=1050, x0=(0.0, 0.0, 1.0e-6)
+        dt=1 / 60, Nt=1000000, R=1.5e-6, rho=1050, x0=(0.0, 0.0, 1.0e-6)
     )
     langevin3D.trajectory()
-    print(time.time() - t )
-    langevin3D.plotTrajectory()
+
+    # langevin3D.plotTrajectory()
     #
     # MSDx = langevin3D.MSD1D("x", output=True)
     # MSDy = langevin3D.MSD1D("y", output=True)
@@ -240,3 +236,6 @@ if __name__ == "__main__":
     #
     # plt.plot(langevin3D.t, langevin3D.z * 1e6)
     # plt.show()
+
+if __name__ == '__main__':
+    test()

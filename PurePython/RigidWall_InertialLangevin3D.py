@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PurePython.RigidWallOverdampedLangevin3D import RigidWallOverdampedLangevin3D
+from RigidWallOverdampedLangevin3D import RigidWallOverdampedLangevin3D
 
 
 class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de RigidWallOverdampedLangevin3D
@@ -124,50 +124,55 @@ class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de 
         if output:
             return self.x, self.y, self.z
 
-if __name__ == "__main__":
+def test():
     langevin3D = RigidWallInertialLangevin3D(
-        dt=1e-6, Nt=10000000, R=1.5e-6, rho=2500, x0=(0.0, 0.0, 1e-7)
+        dt=1e-6, Nt=1000000, R=1.5e-6, rho=2500, x0=(0.0, 0.0, 1e-7)
     )
     langevin3D.trajectory()
-    langevin3D.plotTrajectory()
-    MSDx = langevin3D.MSD1D("x", output=True)
-    MSDy = langevin3D.MSD1D("y", output=True)
-    MSDz = langevin3D.MSD1D("z", output=True)
 
-    # ----- MSD 1D -----
+    # langevin3D.plotTrajectory()
+    # MSDx = langevin3D.MSD1D("x", output=True)
+    # MSDy = langevin3D.MSD1D("y", output=True)
+    # MSDz = langevin3D.MSD1D("z", output=True)
+    #
+    # # ----- MSD 1D -----
+    #
+    # fig1 = plt.figure()
+    # plt.loglog(
+    #     langevin3D.t[langevin3D.list_dt_MSD],
+    #     MSDx,
+    #     color="red",
+    #     linewidth=0.8,
+    #     label="MSDx inertial",
+    # )
+    # plt.loglog(
+    #     langevin3D.t[langevin3D.list_dt_MSD],
+    #     MSDy,
+    #     color="green",
+    #     linewidth=0.8,
+    #     label="MSDy inertial",
+    # )
+    # plt.loglog(
+    #     langevin3D.t[langevin3D.list_dt_MSD],
+    #     MSDz,
+    #     color="blue",
+    #     linewidth=0.8,
+    #     label="MSDz inertial",
+    # )
+    # plt.plot(
+    #     langevin3D.t[langevin3D.list_dt_MSD],
+    #     (2 * langevin3D.kb * langevin3D.T / langevin3D.gamma_mean)
+    #     * langevin3D.t[langevin3D.list_dt_MSD],
+    #     color="black",
+    #     linewidth=0.8,
+    #     label="Non inertial theory : x = 2D t",
+    # )
+    # plt.xlabel("Times t [s]")
+    # plt.ylabel("MSD 1D [m²]")
+    # plt.title("Mean square displacement 1D")
+    # plt.legend()
+    # plt.show()
 
-    fig1 = plt.figure()
-    plt.loglog(
-        langevin3D.t[langevin3D.list_dt_MSD],
-        MSDx,
-        color="red",
-        linewidth=0.8,
-        label="MSDx inertial",
-    )
-    plt.loglog(
-        langevin3D.t[langevin3D.list_dt_MSD],
-        MSDy,
-        color="green",
-        linewidth=0.8,
-        label="MSDy inertial",
-    )
-    plt.loglog(
-        langevin3D.t[langevin3D.list_dt_MSD],
-        MSDz,
-        color="blue",
-        linewidth=0.8,
-        label="MSDz inertial",
-    )
-    plt.plot(
-        langevin3D.t[langevin3D.list_dt_MSD],
-        (2 * langevin3D.kb * langevin3D.T / langevin3D.gamma_mean)
-        * langevin3D.t[langevin3D.list_dt_MSD],
-        color="black",
-        linewidth=0.8,
-        label="Non inertial theory : x = 2D t",
-    )
-    plt.xlabel("Times t [s]")
-    plt.ylabel("MSD 1D [m²]")
-    plt.title("Mean square displacement 1D")
-    plt.legend()
-    plt.show()
+
+if __name__ == '__main__':
+    test()
