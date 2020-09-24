@@ -23,7 +23,7 @@ extensions = []
 for i in sources:
     extension = Extension(i[:-4],
                             sources= [i],
-                            extra_compile_args=['/O2'],
+                           # extra_compile_args=['/O2'],
                             language='c',)
 
     extensions.append(extension)
