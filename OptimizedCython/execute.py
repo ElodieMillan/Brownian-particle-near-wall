@@ -1,7 +1,7 @@
 import timeit
 import sys
 
-sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020\PurePython")
+sys.path.append(r"../PurePython")
 
 """
  ---------------------------------------
@@ -76,20 +76,20 @@ sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020\PurePython")
  ---------------------------------------
 """
 
-# cy_RWI = timeit.timeit(
-#     "RigidWall_InertialLangevin3D_cython.test()",
-#     setup="import RigidWall_InertialLangevin3D_cython",
-#     number=1,
-# )
-# py_RWI = timeit.timeit(
-#     "RigidWall_InertialLangevin3D.test()", setup="import RigidWall_InertialLangevin3D", number=1
-# )
-#
-# print("=========== RIGID WALL INERTIAL =============")
-# print("----- Cython speed = {:.5f} s".format(cy_RWI))
-# print("----- Python speed = {:.5f} s".format(py_RWI))
-# print("-->Cython is {:.5f} x faster than Python !".format((py_RWI / cy_RWI)))
-# print("=============================================")
+cy_RWI = timeit.timeit(
+    "RigidWall_InertialLangevin3D_cython.test()",
+    setup="import RigidWall_InertialLangevin3D_cython",
+    number=1,
+)
+py_RWI = timeit.timeit(
+    "RigidWall_InertialLangevin3D.test()", setup="import RigidWall_InertialLangevin3D", number=1
+)
+
+print("=========== RIGID WALL INERTIAL =============")
+print("----- Cython speed = {:.5f} s".format(cy_RWI))
+print("----- Python speed = {:.5f} s".format(py_RWI))
+print("-->Cython is {:.5f} x faster than Python !".format((py_RWI / cy_RWI)))
+print("=============================================")
 
 
 """ 
@@ -117,14 +117,14 @@ sys.path.append(r"C:\Users\Shadow\PycharmProjects\StageObjet2020\PurePython")
 ========================================================================
 """
 
-import pstats, cProfile
+#import pstats, cProfile
 
-import pyximport
-pyximport.install()
+#import pyximport
+#pyximport.install()
 
-import RigidWall_InertialLangevin3D_cython
+#import RigidWall_InertialLangevin3D_cython
 
-cProfile.runctx("RigidWall_InertialLangevin3D_cython.test()", globals(), locals(), "Profile.prof")
+#cProfile.runctx("RigidWall_InertialLangevin3D_cython.test()", globals(), locals(), "Profile.prof")
 
-s = pstats.Stats("Profile.prof")
-s.strip_dirs().sort_stats("time").print_stats()
+#s = pstats.Stats("Profile.prof")
+#s.strip_dirs().sort_stats("time").print_stats()
