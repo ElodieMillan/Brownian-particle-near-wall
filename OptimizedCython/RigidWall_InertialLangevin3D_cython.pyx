@@ -25,13 +25,15 @@ class RigidWallInertialLangevin3D( RigidWallOverdampedLangevin3D ):
         :param x0: array double - Initial position of particule (DEFAULT = (0,0,R) [m]).
         """
         if x0 == None:
-            x0 = (0.0, 0.0, R)
+            x0 = [0.0, 0.0, R]
         super().__init__(dt, Nt, R, rho, eta=eta, T=T, x0=x0)
-
+        t = np.zeros((3, 2))
+        t[:,0] = x0 ; t[:,1] = x0
+        self.x0 = t
+        del t
         self.gamma_mean = 6 * np.pi * eta * R # average of gamma
         self.tau_mean = self.m / self.gamma_mean # average of tau
 
-    @cython.profile(True)
     def trajectory(self, output=False):
         """
 
@@ -52,9 +54,10 @@ class RigidWallInertialLangevin3D( RigidWallOverdampedLangevin3D ):
         res = np.zeros((3, self.Nt))
 
         # 2 first values of trajectory
-        res[0,0:2] = [self.x0[0],self.x0[0]]
-        res[1,0:2] = [self.x0[1], self.x0[1]]
-        res[2,0:2] = [self.x0[2], self.x0[2]]
+
+        res[0,0:2] = self.x0[0,:]
+        res[1,0:2] = self.x0[1,:]
+        res[2,0:2] = self.x0[2,:]
 
         res = np.asarray(trajectory_cython(self.Nt, rngx, rngy, rngz, res, self.delta_m, self.g, self.dt,
                                            self.kb, self.T, self.lD, self.R, self.eta, self.m))
@@ -70,9 +73,6 @@ class RigidWallInertialLangevin3D( RigidWallOverdampedLangevin3D ):
 CYTHON We put all methode as function out of the class (Object as Cython is complex).
 """
 cdef double pi = np.pi
-cdef double gam_xy
-cdef double gam_z
-cdef double noise
 cdef double gamma
 cdef double weight
 cdef double elec
@@ -82,7 +82,6 @@ cdef double xi
 cdef double zi
 
 
-@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -96,24 +95,23 @@ cdef double gamma_xy(double zi_1, double R, double eta):
     :return: gamma_x = gamma_y = 6πη(z)R : the gamma value for x and y trajectories dependant of z(t-dt).
     """
     # Libchaber formula
-    gam_xy = (
-            6
-            * pi
-            * R
-            * eta
-            * (
-                    1
-                    - ((9 * R) / (16 * (zi_1 + R)))
-                    + (R / (8 * (zi_1 + R))) ** 3
-                    - (45 * R / (256 * (zi_1 + R))) ** 4
-                    - (R / (16 * (zi_1 + R))) ** 5
-            )
-            ** (-1)
+    cdef double gam_xy = (
+        6
+        * pi
+        * R
+        * eta
+        * (
+            1
+            - ((9 * R) / (16 * (zi_1 + R)))
+            + (R / (8 * (zi_1 + R))) ** 3
+            - (45 * R / (256 * (zi_1 + R))) ** 4
+            - (R / (16 * (zi_1 + R))) ** 5
+        )
+        ** (-1)
     )
 
     return gam_xy
 
-@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -127,7 +125,7 @@ cdef double gamma_z(double zi_1, double R, double eta):
     :return: gamma_z = 6πη(z)R : the gamma value for z trajectory dependant of z(t-dt).
     """
     # Padé formula
-    gam_z = (
+    cdef double gam_z = (
         6
         * pi
         * R
@@ -143,7 +141,6 @@ cdef double gamma_z(double zi_1, double R, double eta):
 
     return gam_z
 
-@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -156,19 +153,17 @@ cdef double a(double gamma, double kb, double T):
     
     :return: The white noise a at the position z(t-dt) for a gamma value on x/y or z.
     """
-    noise = sqrt(2 * kb * T * gamma)
+    cdef double noise = sqrt(2 * kb * T * gamma)
 
     return noise
 
-# cdef double RNG():
-#     cdef double rng =
 
-@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double positionXYi_cython(double xi_1, double xi_2, double zi_1, double rng, double dt,
+cdef double positionXYi_cython(double xi_1, double xi_2, double zi_1,
+                               double rng, double dt,
                                double kb, double T, double R, double eta, double m):
 
     """
@@ -194,7 +189,6 @@ cdef double positionXYi_cython(double xi_1, double xi_2, double zi_1, double rng
 
     return xi
 
-@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -227,7 +221,6 @@ cdef double positionZi_cython(double zi_1, double zi_2, double rng, double delta
 
     return zi
 
-@cython.profile(True)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
