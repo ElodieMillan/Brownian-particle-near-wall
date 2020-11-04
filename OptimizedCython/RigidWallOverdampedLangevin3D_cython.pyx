@@ -13,15 +13,15 @@ from InertialLangevin3D_cython import InertialLangevin3D
 
 
 class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
-    def __init__(self, dt, Nt, R, rho, rhoF=1000.0, eta=0.001, T=300.0, x0=None):
+    def __init__(self, dt, Nt, R, rho=1050.0, rhoF=1000.0, eta=0.001, T=300.0, x0=None):
         """
         :param dt: float - Time step [s].
         :param Nt: int - Number of time points.
         :param R: float - Radius of particule [m].
-        :param rho: float - Volumic mass of the particule [kg/m³].
-        :param rhoF: float - Volumic mass of the fluid [kg/m³] (DEFAULT = 1000 [kg/m³]).
-        :param eta: float - Fluid viscosity (DEFAULT = 0.001 [Pa/s]).
-        :param T: float - Temperature (DEFAULT = 300 [k]).
+        :param rho: float - Volumic mass of the particule [kg/m³] (DEFAULT = 1050 kg/m³).
+        :param rhoF: float - Volumic mass of the fluid [kg/m³] (DEFAULT = 1000 kg/m³).
+        :param eta: float - Fluid viscosity (DEFAULT = 0.001 Pa/s).
+        :param T: float - Temperature (DEFAULT = 300 K).
         :param x0: array float - Initial position of particule (DEFAULT = (0,0,R) [m]).
         """
         if x0 == None:
@@ -31,7 +31,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         self.lD = 70e-9  # Debay length
         self.g = 9.81  # m/s²
         self.m = rho * (4 / 3) * np.pi * R ** 3
-        self.delta_m = (4 / 3) * np.pi * self.R ** 3 * (self.rho - self.rhoF)
+        self.delta_m = (4 / 3) * np.pi * self.R ** 3 * (self.rho - self.rhoF) # m_particule - m_fluid
         self.lB = (self.kb * self.T) / (self.delta_m * self.g)  # Boltzmann length
 
     def _gamma_xy(self, zi_1):

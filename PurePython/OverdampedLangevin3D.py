@@ -264,13 +264,15 @@ class Langevin3D:
 
 
 def test():
-    langevin3D = Langevin3D(0.01, 500000, 1e-6)
+    langevin3D = Langevin3D(
+        dt=1/60, Nt=1000000, R=1.5e-6, x0=(0.0, 0.0, 0.0)
+    )
     langevin3D.trajectory()
 
-    # langevin3D.plotTrajectory()
-    # langevin3D.MSD1D("x", plot=True)
-    # langevin3D.MSD1D("y", plot=True)
-    # langevin3D.MSD1D("z", plot=True)
+    langevin3D.plotTrajectory()
+    langevin3D.MSD1D("x", plot=True)
+    langevin3D.MSD1D("y", plot=True)
+    langevin3D.MSD1D("z", plot=True)
     # langevin3D.MSD3D(plot=True)
     # #langevin3D.speedDistribution1D("x", 10, plot=True)
     # langevin3D.dXDistribution1D("x", 10, plot=True)

@@ -15,15 +15,15 @@ from OverdampedLangevin3D_cython import Langevin3D
 
 
 class InertialLangevin3D(Langevin3D):
-    def __init__(self, dt, Nt, R, rho, eta=0.001, T=300, x0=(0, 0, 0)):
+    def __init__(self, dt, Nt, R, rho=1050.0, eta=0.001, T=300, x0=(0, 0, 0)):
         """
 
         :param dt: Time step [s].
         :param Nt: Number of time points.
         :param R: Radius of particule [m].
-        :param rho: Volumic mass of the particule [kg/m³]
-        :param eta: Fluid viscosity (default = 0.001 [Pa/s]).
-        :param T: Temperature (default = 300 [k]).
+        :param rho: Volumic mass of the particule [kg/m³] (DEFAULT = 1050 kg/m³)
+        :param eta: Fluid viscosity (default = 0.001 Pa/s).
+        :param T: Temperature (default = 300 K).
         :param x0: Initial position of particule (default = (0,0,0) [m]).
         """
         super().__init__(dt, Nt, R, eta=eta, T=T, x0=x0)
@@ -115,7 +115,9 @@ cdef np.ndarray[dtype_t, ndim=2] trajectory_cython(long int Nt,
 
 
 def test():
-    langevin3D = InertialLangevin3D(1e-7, 5000000, 1e-6, 1050)
+    langevin3D = InertialLangevin3D(
+        dt=1e-6, Nt=1000000, R=1.5e-6, rho=1050.0, x0=(0.0, 0.0, 0.0)
+    )
 
     langevin3D.trajectory()
     # langevin3D.plotTrajectory()
