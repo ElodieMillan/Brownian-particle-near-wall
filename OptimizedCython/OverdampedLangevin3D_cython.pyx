@@ -65,9 +65,9 @@ class Langevin3D:
         """
         Plot the trajectory of the Langevin3D object.
         """
-        plt.plot(self.t, self.x, color="blue", linewidth=0.8, label="x")
-        plt.plot(self.t, self.y, color="red", linewidth=0.8, label="y")
-        plt.plot(self.t, self.z, color="green", linewidth=0.8, label="z")
+        plt.plot(self.t, self.x, linewidth=0.8, label="x")
+        plt.plot(self.t, self.y, linewidth=0.8, label="y")
+        plt.plot(self.t, self.z, linewidth=0.8, label="z")
         plt.xlabel("Time [s]")
         plt.ylabel("Position [m]")
         plt.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2))
@@ -80,10 +80,13 @@ class Langevin3D:
         Compute the mean square displacement in 1 dimention.
 
         :param axis: The 1D trajectory to compute, "x" or "y" or "z".
+        :param data: 1D data to comput the MSD.
         :param output: Boolean, if true function output MSD1D (default : false).
         :param plot: Boolean, if true plot MSD1D (default : false).
         :return: The mean square displacement in 1 dimension of the "axis" trajectory.
         """
+
+
         self.list_dt_MSD = np.array([], dtype=np.int)
         for i in range(len(str(self.Nt)) - 1):
             # Take just 10 points by decade.
@@ -101,7 +104,7 @@ class Langevin3D:
         elif axis == "z":
             x = self.z
         else:
-            raise ValueError("axis should be equal to 'x' or 'y' or 'z'")
+            raise ValueError('axis should be equal to "x" or "y" or "z"')
 
         NumberOfMSDPoint = len(self.list_dt_MSD)
         self.MSD = np.zeros(NumberOfMSDPoint)
@@ -264,7 +267,9 @@ class Langevin3D:
 
 
 def test():
-    langevin3D = Langevin3D(0.01, 500000, 1e-6)
+    langevin3D = Langevin3D(
+        dt=1/60, Nt=1000000, R=1.5e-6, x0=(0.0, 0.0, 0.0)
+    )
     langevin3D.trajectory()
 
     # langevin3D.plotTrajectory()

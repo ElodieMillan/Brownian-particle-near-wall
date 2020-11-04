@@ -126,7 +126,7 @@ class RigidWallInertialLangevin3D(RigidWallOverdampedLangevin3D):  # hérite de 
 
 def test():
     langevin3D = RigidWallInertialLangevin3D(
-        dt=1e-6, Nt=1000000, R=1.5e-6, rho=2500, x0=(0.0, 0.0, 1e-7)
+        dt=1e-6, Nt=1000000, R=1.5e-6, rho=1050, x0=(0.0, 0.0, 1.0e-6)
     )
     langevin3D.trajectory()
 
