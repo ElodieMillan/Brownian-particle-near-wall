@@ -3,6 +3,7 @@
 # Langevin equation 3D for a free particule close to a rigid wall without inertia and with weight.
 
 import numpy as np
+from tqdm import tqdm
 
 # from OverdampedLangevin3D import Langevin3D
 from InertialLangevin3D import InertialLangevin3D
@@ -171,7 +172,7 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         y[0] = self.x0[1]
         z[0] = self.x0[2]
 
-        for i in range(1, self.Nt):
+        for i in tqdm(range(1, self.Nt)):
             x[i] = self._PositionXi(x[i - 1], z[i - 1], rngx[i])
             y[i] = self._PositionXi(y[i - 1], z[i - 1], rngy[i])
             z[i] = self._PositionXi(z[i - 1], z[i - 1], rngz[i], "z")
