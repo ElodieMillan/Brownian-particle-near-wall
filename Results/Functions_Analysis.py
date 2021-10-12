@@ -153,7 +153,7 @@ def Cumulant4(axis, Rs, dt, Nt, plot=True, output=False):
         return t[list_dt_c4], c4
 
 
-def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, speed_drift=None, space=None, bins=50, plot=True, output=False):
+def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, N_tau=None, speed_drift=None, space=None, bins=50, plot=True, output=False):
     """
 
     Parameters
@@ -173,8 +173,16 @@ def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, speed_drift=None, space=None
     -------
 
     """
+    if space!="bulk" and space!="wall":
+        raise ValueError("WRONG SPACE : choose between 'bulk' and 'wall' !")
+    # if axis!="x" and space!="y" and space!="z" and space!="dx" and space!="dy" and space!="dz":
+    #     raise ValueError("WRONG AXIS : choose between 'x', 'y', 'z', 'dx', 'dy' and 'dz' !")
+    # if len(Rs[:,0])!=Nt:
+    #     raise ValueError("WRONG LENGHT : Nt need to be same lenght than Rs[i,:], for all i!")
+
     time = np.arange(0, Nt) * dt
-    Nb_t_Intervalle = 10
+    if N_tau==0:
+        N_tau = 10
 
     # ------ What do you want ? ----
     if axis == "x":
@@ -189,17 +197,17 @@ def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, speed_drift=None, space=None
     elif axis == "dx":
         axis = "\Delta x"
         position = Rs[:, 0]
-        dX = position[Nb_t_Intervalle:] - position[:-Nb_t_Intervalle]
+        dX = position[N_tau:] - position[:-N_tau]
 
     elif axis == "dy":
         axis = "\Delta y"
         position = Rs[:, 1]
-        dX = position[Nb_t_Intervalle:] - position[:-Nb_t_Intervalle]
+        dX = position[N_tau:] - position[:-N_tau]
 
     elif axis == "dz":
         axis = "\Delta z"
         position = Rs[:, 2]
-        dX = position[Nb_t_Intervalle:] - position[:-Nb_t_Intervalle]
+        dX = position[N_tau:] - position[:-N_tau]
     else:
         raise ValueError("WRONG AXIS : choose between 'x', 'y' and 'z' or 'dx', 'dy' and 'dz' !")
 
@@ -207,31 +215,30 @@ def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, speed_drift=None, space=None
     if space=="bulk":
         hist, bin_edges = np.histogram(dX, bins=bins, density=True)
         binsPositions = (bin_edges[:-1] + bin_edges[1:]) / 2
-        binsPositions = binsPositions / np.sqrt(2 * D * dt * Nb_t_Intervalle)
+        binsPositions = binsPositions / np.sqrt(2 * D * dt * N_tau)
         pdf = hist / np.trapz(hist, binsPositions)
 
         if speed_drift!=None:
             z_theo = np.linspace(-5, 5, 2000)
             PDFtheo = 1/np.sqrt(2*np.pi) * np.exp(-(z_theo)**2 / 2)
-            z_theo = z_theo + speed_drift*Nb_t_Intervalle*dt/np.sqrt(2 * D * dt * Nb_t_Intervalle)
+            z_theo = z_theo + speed_drift*N_tau*dt/np.sqrt(2 * D * dt * N_tau)
         else:
             z_theo = np.linspace(-5, 5, bins)
             PDFtheo = 1/np.sqrt(2*np.pi) * np.exp(-z_theo**2 / 2)
 
-    if space=="wall":
 
+    if space=="wall":
         if axis=="x" or axis=="y" or axis=="z":
             hist, bin_edges = np.histogram(position[position < 3e-6], bins=bins, density=False)
             binsPositions = (bin_edges[:-1] + bin_edges[1:]) / 2
-
         else:
+            zth = np.linspace(-5, 5, bins)
+            PDF_gauss = 1/np.sqrt(2*np.pi) * np.exp(-(zth)**2 / 2) #Gaussian theory
+
             hist, bin_edges = np.histogram(dX, bins=bins, density=False)
             binsPositions = (bin_edges[:-1] + bin_edges[1:]) / 2
-            binsPositions = binsPositions / (np.sqrt(2 * dt * Nb_t_Intervalle * D))
-            Label = r"$\tau = "+str(Nb_t_Intervalle*dt)+"\mathrm{s}$"
-            z_theo = np.linspace(-5, 5, bins)
-            PDFtheo = 1/np.sqrt(2*np.pi) * np.exp(-(z_theo)**2 / 2)
-
+            binsPositions = binsPositions / (np.sqrt(2* D * dt * N_tau))
+            Label = r"$\tau = "+str(N_tau*dt)+"\mathrm{s}$"
         pdf = hist / np.trapz(hist, binsPositions)
 
         if axis=="z" and lB!=None and lD!=None:
@@ -239,10 +246,16 @@ def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, speed_drift=None, space=None
             p_theo = np.exp(- 4.8 * np.exp(-z_theo / lD) - z_theo / lB)
             PDFtheo = p_theo / np.trapz(p_theo, z_theo)
 
-    if space!="bulk" and space!="wall":
-        raise ValueError("WRONG SPACE : choose between 'bulk' and 'wall' !")
+        # if (axis=="dx" or axis=="dy" or axis=="dz") and lB!=None and lD!=None :
+            # z_theo = np.linspace(1e-9, 3e-6, bins)
+            # P_Di = np.trapz(D*P_z_wall(z_theo, 1, 4.8, lD, lB)), z_theo)
+            # dxi_theo = np.linspace(-5, 5, bins)
+            # P_dxi = np.trapz(P_Di*np.exp(-dxi_theo**2/(4*D*)))
 
 
+    """
+    ---------------- PLOTS
+    """
     if plot:
         if space=="bulk":
             plt.semilogy(binsPositions,pdf, "o", markersize=4, label=r"$\mathrm{Numerical}$")
@@ -253,24 +266,25 @@ def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, speed_drift=None, space=None
 
         if space == "wall":
             plt.semilogy(binsPositions, pdf, "o", label=r"$\mathrm{Numerical}$")
-
-            if axis=="z" or axis=="\Delta x" or axis=="\Delta y" or axis=="\Delta z":
+            if axis=="z": # or axis=="\Delta x" or axis=="\Delta y" or axis=="\Delta z"
                 plt.plot(z_theo, PDFtheo, "k-", label=r"$\mathrm{Theoritical}$")
                 if axis!="z":
+                    plt.plot(zth, PDF_gauss, "r:", label=r"$\mathrm{Gaussienne}$")
                     plt.title(Label)
 
-            # if speed_drift!=None:
-
-
-            plt.xlabel(r"$" + axis + "~(m)$", fontsize=15)
-            plt.ylabel(r"$P(" + axis + ") ~ (\mathrm{m}^{-1})$", fontsize=15)
+            if axis=="x" or axis=="x" or axis=="z":
+                plt.xlabel(r"$" + axis + "(\mathrm{m})$", fontsize=15)
+                plt.ylabel(r"$P(" + axis + ") ~ (\mathrm{m}^{-1})$", fontsize=15)
+            else:
+                plt.xlabel(r"$" + axis + "/\sigma$", fontsize=15)
+                plt.ylabel(r"$P(" + axis + ")$", fontsize=15)
 
         plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
         plt.legend()
         plt.show()
 
     if output==True:
-        return binsPositions, hist, PDFtheo
+        return binsPositions, hist
 
 
 
@@ -379,5 +393,6 @@ def P_Deltaz_longTime(deltaz, B, lD, lB):
     A = 1 / np.trapz(PPPP, deltaz)
 
     return PPPP * A
+
 
 
