@@ -239,6 +239,7 @@ def PDF(axis, Rs, dt, Nt, D=None, lD=None, lB=None, N_tau=None, speed_drift=None
             binsPositions = (bin_edges[:-1] + bin_edges[1:]) / 2
             binsPositions = binsPositions / (np.sqrt(2* D * dt * N_tau))
             Label = r"$\tau = "+str(N_tau*dt)+"\mathrm{s}$"
+
         pdf = hist / np.trapz(hist, binsPositions)
 
         if axis=="z" and lB!=None and lD!=None:
@@ -393,6 +394,8 @@ def P_Deltaz_longTime(deltaz, B, lD, lB):
     A = 1 / np.trapz(PPPP, deltaz)
 
     return PPPP * A
+
+######################################################
 
 
 
