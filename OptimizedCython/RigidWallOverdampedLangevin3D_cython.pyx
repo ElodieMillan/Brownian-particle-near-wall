@@ -12,6 +12,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+from tqdm import trange
+
 from InertialLangevin3D_cython import InertialLangevin3D
 
 
@@ -122,88 +124,88 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
 
     ## SOME ANALYSIS FUNCTIONS
 
-    def MSD(axis, space=None, plot=True, output=False):
+    def MSD(self, axis, space=None, plot=True, output=False):
         """
 
         :param space: Choose between "bulk" and "wall".
         :param plot: Plot MSD is True.
         :param output: Return {tau, MSD(tau)} is True.
         """
-    if axis == "x":
-        position = self.x
-    elif axis == "y":
-        position = self.y
-    elif axis == "z":
-        position = self.z
-    else:
-        raise ValueError("WRONG AXIS : choose between 'x', 'y' and 'z' !")
+        if axis == "x":
+            position = self.x
+        elif axis == "y":
+            position = self.y
+        elif axis == "z":
+            position = self.z
+        else:
+            raise ValueError('WRONG AXIS : choose between "x", "y" and "z" !')
 
-    list_dt_MSD = np.array([], dtype=int)
-    for i in range(len(str(self.Nt)) - 1):
-        # Take just 10 points by decade.
-        list_dt_MSD = np.concatenate(
-            (
-                list_dt_MSD,
-                np.arange(10 ** i, 10 ** (i + 1), 10 ** i, dtype=int),
+        list_dt_MSD = np.array([], dtype=int)
+        for i in range(len(str(self.Nt)) - 1):
+            # Take just 10 points by decade.
+            list_dt_MSD = np.concatenate(
+                (
+                    list_dt_MSD,
+                    np.arange(10 ** i, 10 ** (i + 1), 10 ** i, dtype=int),
+                )
             )
-        )
-    # -----------------------
-    NumberOfMSDPoint = len(list_dt_MSD)
-    msd = np.zeros(NumberOfMSDPoint)
-    for k, i in enumerate(tqdm(list_dt_MSD)):
-        if i == 0:
-            msd[k] = 0
-            continue
-        msd[k] = np.mean((position[i:]-position[:-i])**2)
+        # -----------------------
+        NumberOfMSDPoint = len(list_dt_MSD)
+        msd = np.zeros(NumberOfMSDPoint)
+        for k, i in enumerate(tqdm(list_dt_MSD)):
+            if i == 0:
+                msd[k] = 0
+                continue
+            msd[k] = np.mean((position[i:]-position[:-i])**2)
 
 
-    if plot:
-        plt.loglog(self.t[list_dt_MSD], msd, "o", label="Numerical")
+        if plot:
+            plt.loglog(self.t[list_dt_MSD], msd, "o", label="Numerical")
 
-        if space=="bulk":
-            msd_theo_bulk = 2 * self.D * self.t[list_dt_MSD]
-            plt.plot(self.t[list_dt_MSD], msd_theo_bulk, "k-", label=r"$2D_0 \tau$")
+            if space=="bulk":
+                msd_theo_bulk = 2 * self.D * self.t[list_dt_MSD]
+                plt.plot(self.t[list_dt_MSD], msd_theo_bulk, "k-", label=r"$2D_0 \tau$")
 
-        elif space=="wall":
-            zth = np.linspace(1e-10, 10e-6, 1000)
-            Peq_z = self.P_z_wall(zth, 4.8)
-            Peq_z = Peq_z / np.trapz(Peq_z, zth)
-            if axis=="z":
-                Di = (self.kb*self.T) / (self._gamma_z(zth))
-            else:
-                Di = (self.kb*self.T) / (self._gamma_xy(zth))
+            elif space=="wall":
+                zth = np.linspace(1e-10, 10e-6, 1000)
+                Peq_z = self.P_z_wall(zth, 4.8)
+                Peq_z = Peq_z / np.trapz(Peq_z, zth)
+                if axis=="z":
+                    Di = (self.kb*self.T) / (self._gamma_z(zth))
+                else:
+                    Di = (self.kb*self.T) / (self._gamma_xy(zth))
 
-            Di_mean = np.trapz(Di * Peq_z, zth)
-            msd_theo_bulk = 2 * Di_mean * self.t[list_dt_MSD]
-            plt.plot(self.t[list_dt_MSD], msd_theo_bulk, "k-", label=r"$2 \langle D_{} \rangle _z \tau$".format(axis))
+                Di_mean = np.trapz(Di * Peq_z, zth)
+                msd_theo_bulk = 2 * Di_mean * self.t[list_dt_MSD]
+                plt.plot(self.t[list_dt_MSD], msd_theo_bulk, "k-", label=r"$2 \langle D_{} \rangle _z \tau$".format(axis))
 
-            if axis=="z":
-                dz = np.linspace(-2.5e-5, 2.5e-5, 1000)
-                P_dz = P_Deltaz_longTime(dz, 4.8)
-                mean_dz_square = np.trapz(dz ** 2 * P_dz, dz)
-                plt.plot(self.t[list_dt_MSD], mean_dz_square * np.ones(NumberOfMSDPoint), label=r"$ \langle \Delta z \rangle $")
+                if axis=="z":
+                    dz = np.linspace(-2.5e-5, 2.5e-5, 1000)
+                    P_dz = self.P_deltaZ_longTime(dz, 4.8)
+                    mean_dz_square = np.trapz(dz ** 2 * P_dz, dz)
+                    plt.plot(self.t[list_dt_MSD], mean_dz_square * np.ones(NumberOfMSDPoint), label=r"$ \langle \Delta z \rangle $")
 
-        plt.title(r"Mean square displacement on $" + axis +"$")
-        plt.xlabel(r"$\tau$ $(\mathrm{s})$", fontsize=15)
-        plt.ylabel(r"$\langle ($$" + axis + r"$$(t+\tau) - $$" + axis + r"$$(t))^2 \rangle$ $(\mathrm{m}^2)$", fontsize=15)
+            plt.title(r"Mean square displacement on $" + axis +"$")
+            plt.xlabel(r"$\tau$ $(\mathrm{s})$", fontsize=15)
+            plt.ylabel(r"$\langle ($$" + axis + r"$$(t+\tau) - $$" + axis + r"$$(t))^2 \rangle$ $(\mathrm{m}^2)$", fontsize=15)
 
-        ax = plt.gca()
-        locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
-        ax.xaxis.set_major_locator(locmaj)
-        locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
-        ax.xaxis.set_minor_locator(locmin)
-        ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-        locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
-        ax.yaxis.set_major_locator(locmaj)
-        locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
-        ax.yaxis.set_minor_locator(locmin)
-        ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+            ax = plt.gca()
+            locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
+            ax.xaxis.set_major_locator(locmaj)
+            locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
+            ax.xaxis.set_minor_locator(locmin)
+            ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+            locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
+            ax.yaxis.set_major_locator(locmaj)
+            locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
+            ax.yaxis.set_minor_locator(locmin)
+            ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 
-        plt.legend()
-        plt.show()
+            plt.legend()
+            plt.show()
 
-    if output:
-        return msd, self.t[list_dt_MSD]
+        if output:
+            return msd, self.t[list_dt_MSD]
 
 
     def Cumulant4(self, axis, plot=True, output=False):
@@ -216,15 +218,15 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         # --- def some array
         if axis == "x":
             position = self.x
-        if axis == "y":
+        elif axis == "y":
             position = self.y
-        if axis == "z":
+        elif axis == "z":
             position = self.z
         else:
             raise ValueError('WRONG AXIS : choose between "x", "y" and "z" !')
 
         list_dt_c4 = np.array([], dtype=int)
-        for i in range(len(str(self.Nt)) - 1):
+        for i in range(len(str(self.Nt)) - 3):
             # Take just 10 points by decade.
             list_dt_c4 = np.concatenate(
                 (
@@ -256,11 +258,18 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         mean_Di2_theo = np.trapz(Di ** 2 * P_eq_z, zth)
 
         facteur_cumulant = (mean_Di2_theo - mean_Di_theo ** 2) / 2
+
+        t_theo = np.linspace(1e1, 1e8, 1000)
         tth = np.linspace(np.min(self.t[list_dt_c4])/10,np.max(self.t[list_dt_c4])*10, 1000)
+        print("Pente cumulant4 = ", facteur_cumulant)
+
+        factoriel4 = 1*2*3*4
+        C4tempsLong = factoriel4*9.069233e-29*t_theo - factoriel4*6.1744172e-28
 
         if plot:
             plt.loglog(self.t[list_dt_c4], c4, "o", label=r"$\mathrm{Numerical}$")
-            plt.plot(tth, facteur_cumulant * tth**2, "k-", label=r"$(\langle D_{\|, \mathrm{th}}^2 \rangle - \langle D_{\|, \mathrm{th}} \rangle^2)/2$")
+            plt.plot(tth, facteur_cumulant * tth**2, "k-", label=r"$(\langle D_{\|, \mathrm{th}}^2 \rangle - \langle D_{\|, \mathrm{th}} \rangle^2) ~\tau^2/2$")
+            plt.plot(t_theo, C4tempsLong, "r:", label=r"$C^{(4)}_0~\tau + C^{(4)}_1$")
 
             plt.xlabel(r"$\tau~(\mathrm{s})$", fontsize=15)
             plt.ylabel(r"$C^{(4)_"+axis+"}~(\mathrm{m}^4)$", fontsize=15)
@@ -276,7 +285,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             ax.yaxis.set_major_locator(locmaj)
             locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
             ax.yaxis.set_minor_locator(locmin)
-            ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+            # ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
 
             plt.legend()
             plt.show()
@@ -431,28 +440,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
 
         return P
 
-    def Pz_PDeltaz(self, z, deltaz, A, B):
-        # P(z)*P(z+Deltaz)
-        PP = self.P_z_wall(z, A, B) * self.P_z_wall(z + deltaz, A, B)
 
-        return PP
-
-    def p_Deltaz_longTime(self, z, deltaz, A, B):
-        # integrate of P(z)*P(z+Deltaz) on z
-        PPP = np.trapz(self.Pz_PDeltaz(z, deltaz, A, B), z)
-
-        return PPP
-
-    def P_Deltaz_longTime(self, z, deltaz, B, lD, lB):
-        A = 1
-        PPPP = np.zeros(len(deltaz))
-        for i in range(len(deltaz)):
-            PPPP[i] = self._P_Deltaz_longTime(z, deltaz[i], A, B)
-        A = 1 / np.trapz(PPPP, deltaz)
-
-        return PPPP * A
-
-    # Pour la théorie prêt d'un mur dur
     def P_Di(self, axis, bins, B):
 
         z = np.linspace(1e-10, 10e-6, bins)
