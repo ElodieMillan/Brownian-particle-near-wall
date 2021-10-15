@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from tqdm import tqdm
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -102,8 +103,19 @@ def MSD(axis, Rs, dt, Nt, D_mean=None, lD=None, lB=None, speed_drift=None, space
         plt.title(r"Mean square displacement on $" + axis +"$")
         plt.xlabel(r"$\tau$ $(\mathrm{s})$", fontsize=15)
         plt.ylabel(r"$\langle ($$" + axis + r"$$(t+\tau) - $$" + axis + r"$$(t))^2 \rangle$ $(\mathrm{m}^2)$", fontsize=15)
-        # plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
-        # plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+
+        ax = plt.gca()
+        locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
+        ax.xaxis.set_major_locator(locmaj)
+        locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
+        ax.xaxis.set_minor_locator(locmin)
+        ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+        locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
+        ax.yaxis.set_major_locator(locmaj)
+        locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
+        ax.yaxis.set_minor_locator(locmin)
+        ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+
         plt.legend()
         plt.show()
 
