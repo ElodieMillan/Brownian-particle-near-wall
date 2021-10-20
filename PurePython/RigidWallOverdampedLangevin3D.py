@@ -43,21 +43,22 @@ class RigidWallOverdampedLangevin3D(InertialLangevin3D):  # , Langevin3D
         :return: gamma_x = gamma_y = 6πη(z)R : the gamma value for x and y trajectories dependant of z(t-dt).
         """
         # Libchaber formula
+        xi = self.R / (zi_1 + self.R)
+
         self.gamma_xy = (
-            6
-            * np.pi
-            * self.R
-            * self.eta
-            * (
-                1
-                - ((9 * self.R) / (16 * (zi_1 + self.R)))
-                + (self.R / (8 * (zi_1 + self.R))) ** 3
-                - (45 * self.R / (256 * (zi_1 + self.R))) ** 4
-                - (self.R / (16 * (zi_1 + self.R))) ** 5
-            )
-            ** (-1)
+                6
+                * np.pi
+                * self.R
+                * self.eta
+                * (
+                        1
+                        - 9 / 16 * xi
+                        + 1 / 8 * xi ** 3
+                        - 45 / 256 * xi ** 4
+                        - 1 / 16 * xi ** 5
+                )
+                ** (-1)
         )
-        # print("gamma_xy = ", self.gamma_xy)
         return self.gamma_xy
 
     def _gamma_z(self, zi_1):

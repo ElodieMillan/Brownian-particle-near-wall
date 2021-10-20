@@ -47,6 +47,8 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         :return: gamma_x = gamma_y = 6πη(z)R : the gamma value for x and y trajectories dependant of z(t-dt).
         """
         # Libchaber formula
+        xi = self.R / (zi_1+self.R)
+
         self.gamma_xy = (
             6
             * np.pi
@@ -54,10 +56,10 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             * self.eta
             * (
                 1
-                - ((9 * self.R) / (16 * (zi_1 + self.R)))
-                + (self.R / (8 * (zi_1 + self.R))) ** 3
-                - (45 * self.R / (256 * (zi_1 + self.R))) ** 4
-                - (self.R / (16 * (zi_1 + self.R))) ** 5
+                - 9/16 * xi
+                + 1/8 * xi**3
+                - 45/256 * xi**4
+                - 1/16 * xi**5
             )
             ** (-1)
         )
@@ -241,11 +243,11 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             if i == 0:
                 c4[k] = 0
                 continue
-            c4[k] = (np.mean((position[i:] - position[:-i]) ** 4) - 3 * (
-                np.mean((position[i:] - position[:-i]) ** 2)) ** 2) * 1 / (24)
+            deltaX = position[i:] - position[:-i]
+            c4[k] = (np.mean(deltaX**4) - 3 * (np.mean(deltaX**2))**2) * 1/(24)
 
-        # --- Theory
-        zth = np.linspace(1e-9, 10e-6, 300)
+        # --- THEORY
+        zth = np.linspace(1e-12, 10e-6, 30000)
         if (axis == "z"):
             Di = self.kb * self.T / self._gamma_z(zth)
         else:
@@ -259,7 +261,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
 
         facteur_cumulant = (mean_Di2_theo - mean_Di_theo ** 2) / 2
 
-        t_theo = np.linspace(1e1, 1e8, 1000)
+        t_theo = np.linspace(1e1, 1e8, 100)
         tth = np.linspace(np.min(self.t[list_dt_c4])/10,np.max(self.t[list_dt_c4])*10, 1000)
         print("Pente cumulant4 = ", facteur_cumulant)
 
@@ -291,7 +293,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             plt.show()
 
         if output:
-            return self.t[list_dt_c4], c4
+            return self.t[list_dt_c4], c4, facteur_cumulant
 
 
 
@@ -630,14 +632,14 @@ cdef double positionZi_cython(double zi_1, double rng, double delta_m, double g,
     :return: Z position of the particule at time t.
     """
     cdef double gamma = gamma_z(zi_1, R, eta)
-    cdef double weight = delta_m * g * dt / (gamma)
-    cdef double elec = (
+    cdef double weight = delta_m * g * dt / (gamma) #Poids + Archimede
+    cdef double elec = ( # repultion electronique du mur
                 (4 * kb * T) / lD
                 * exp(-zi_1 / lD)
                 * dt
                 / gamma
     )
-    cdef double correction = (
+    cdef double correction = ( #spurious drift
                 kb * T
                 * (42 * R * zi_1 ** 2 + 24 * R ** 2 * zi_1 + 4 * R ** 3)
                 / ( (6 * zi_1 ** 2 + 9 * R * zi_1 + 2 * R ** 2) * (6*zi_1**2 + 2*R*zi_1) )
