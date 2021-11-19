@@ -49,22 +49,10 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         # Libchaber formula
         xi = self.R / (zi_1+self.R)
 
-        self.gamma_xy = (
-            6
-            * np.pi
-            * self.R
-            * self.eta
-            * (
-                1
-                - 9/16 * xi
-                + 1/8 * xi**3
-                - 45/256 * xi**4
-                - 1/16 * xi**5
-            )
-            ** (-1)
-        )
+        gamma_xy = (6 * np.pi * self.R * self.eta *
+                    ( 1 - 9/16 * xi + 1/8 * xi**3 - 45/256 * xi**4 - 1/16 * xi**5 )**(-1) )
 
-        return self.gamma_xy
+        return gamma_xy
 
 
     def _gamma_z(self, zi_1):
@@ -75,7 +63,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         :return: float - gamma_z = 6πη(z)R : the gamma value for z trajectory dependant of z(t-dt).
         """
         # Padé formula
-        self.gamma_z = (
+        gamma_z = (
             6
             * np.pi
             * self.R
@@ -89,7 +77,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             )
         )
 
-        return self.gamma_z
+        return gamma_z
 
     def trajectory(self, output=False):
         """
