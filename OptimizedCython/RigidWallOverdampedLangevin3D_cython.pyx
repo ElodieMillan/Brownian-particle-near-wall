@@ -1,3 +1,5 @@
+#cython: language_level=3
+
 """
 Élodie Millan
 June 2020
@@ -48,10 +50,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         """
         # Libchaber formula
         xi = self.R / (zi_1+self.R)
-
-        gamma_xy = (6 * np.pi * self.R * self.eta *
-                    ( 1 - 9/16 * xi + 1/8 * xi**3 - 45/256 * xi**4 - 1/16 * xi**5 )**(-1) )
-
+        gamma_xy = 6 * np.pi * self.R * self.eta * ( 1 - 9/16 * xi + 1/8 * xi**3 - 45/256 * xi**4 - 1/16 * xi**5 )**(-1)
         return gamma_xy
 
 

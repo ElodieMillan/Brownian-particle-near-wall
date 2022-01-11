@@ -1,5 +1,5 @@
 # distutils: language = c
-#cython: language_level=3
+
 # python setup.py build_ext -i clean
 
 from distutils.core import setup
