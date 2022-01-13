@@ -621,7 +621,7 @@ cdef double positionZi_cython(double zi_1, double rng, double delta_m, double g,
     cdef double gamma = gamma_z(zi_1, R, eta)
     cdef double weight = delta_m * g * dt / (gamma) #Poids + Archimede
     cdef double elec = ( # repultion electronique du mur
-                (4 * kb * T) / lD
+                (4.8 * kb * T) / lD
                 * exp(-zi_1 / lD)
                 * dt
                 / gamma
