@@ -39,7 +39,8 @@ def MSD(axis, Rs, dt, Nt, D_mean=None, lD=None, lB=None, speed_drift=None, space
     -------
 
     """
-    time = np.arange(0, Nt, dt)
+    print(Nt)
+    time = np.linspace(0, dt*Nt, Nt)
 
     if axis == "x":
         position = Rs[:, 0]

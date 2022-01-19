@@ -11,7 +11,7 @@ Le centre de la particule ne peux pas aller plus loin que +H = Hp-a et -H = -(Hp
 import numpy as np
 cimport numpy as np
 cimport cython
-from libc.math cimport exp, sqrt, log
+from libc.math cimport exp, sqrt, log, cosh, sinh
 from libc.stdlib cimport rand, RAND_MAX
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -24,14 +24,14 @@ from InertialLangevin3D_cython import InertialLangevin3D
 
 
 class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
-    def __init__(self, dt, Nt, a, H, Hs, lB, Nt_sub=1, rho=1050.0, rhoF=1000.0, eta=0.001, kBT=1.38e-23*300, x0=None):
+    def __init__(self, dt, Nt, a, H, lD, Nt_sub=1, rho=1050.0, rhoF=1000.0, eta=0.001, kBT=1.38e-23*300, x0=None):
 
+        delta_z = a*0.1
         if x0 == None:
-            x0 = (0.0, 0.0, a)
+            x0 = (0.0, 0.0, -H+a)
         super().__init__(dt, Nt, a, x0=x0)
         self.a = a
         self.H = H
-        self.Hs = Hs
         self.Nt_sub = Nt_sub
         self.rho = rho
         self.rhoF = rhoF
@@ -39,9 +39,9 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         self.kBT = kBT
         self.Hp = self.H + self.a
         self.D0 = kBT/(6*np.pi*self.eta*self.a)
-        self.lB = lB
+        self.lD = lD
         self.B = 4.8
-        #lD = kBT / (4/3 * np.pi * a**3 * (rhoF-rho)*9.81)
+        self.lB = np.abs(kBT / (4/3 * np.pi * a**3 * (rhoF-rho)*9.81))
 
         del self.t
 
@@ -63,14 +63,14 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
                                    res,
                                    self.dt,
                                    self.a, self.eta,
-                                   self.kBT, self.H, self.Hs, self.lB))
+                                   self.kBT, self.H, self.lB, self.lD, self.B))
 
         self.x = res[0,:]
         self.y = res[1,:]
         self.z = res[2,:]
 
         if output:
-            return self.x, self.y, self.z
+            return res
 
     ## SOME ANALYSIS FUNCTIONS
 
@@ -288,10 +288,11 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             plt.legend()
             plt.show()
 
+        if output:
+            return binsPositions, pdf
 
     def P_z_wall(self, z):
         """
-
         :param A: Normalisation.
         :param B: 4.8 experimentally.
 
@@ -300,9 +301,9 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         if type(z) != np.ndarray:
             if (z > self.H) or (z < -self.H):
                 return 0
-            return np.exp(self.B * np.exp((self.H+z) / self.lD) + self.B * np.exp((self.H-z) / self.lD) - z / self.lB)
-
-        P = np.exp(self.B * np.exp((self.H+z) / self.lD) + self.B * np.exp((self.H-z) / self.lD) - z / self.lB)
+            return np.exp(-self.B*np.exp(-self.H/self.lD) * (np.exp(-z/self.lD) + np.exp(z/self.lD)) - z / self.lB)
+        Pz = lambda z : np.exp(-self.B*np.exp(-self.H/self.lD) * (np.exp(-z/self.lD) + np.exp(z/self.lD)) - z / self.lB)
+        P = np.array([Pz(zz) for zz in z])
         P[z < -self.H] = 0
         P[z > self.H] = 0
 
@@ -323,6 +324,24 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
 
         return Pdf
 
+    def uniform(self, delta_z):
+        if self.z - delta_z < -self.H:
+            return np.random.uniform(-self.H, self.z + delta_z)
+        elif self.z - delta_z > self.H:
+            return np.random.uniform(self.H - delta_z, self.H)
+        else:
+            return np.random.uniform(self.z - delta_z, self.z + delta_z)
+
+    def next(self, delta_z):
+        z_old = self.z
+        while z_old == self.z:
+            trial = self.uniform(delta_z)
+            acceptance = self.P_z_wall(trial)/self.P_z_wall(self.z)
+
+            if np.random.uniform() < acceptance:
+                self.z = trial
+        return self.z
+
 
 
 """
@@ -340,35 +359,54 @@ cdef double pi = np.pi
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double gamma_xy(double zi_1, double a, double eta):
+cdef double gamma_xy_eff(double zi_1, double a, double eta, double H):
     """
     Formule de Libshaber
     """
-    cdef double gam_xy = (
+    # Mur Top
+    cdef double gam_xy_T = (
         6
         * pi
         * a
         * eta
         * (
             1
-            - ((9 * a) / (16 * (zi_1 + a)))
-            + (a / (8 * (zi_1 + a))) ** 3
-            - (45 * a / (256 * (zi_1 + a))) ** 4
-            - (a / (16 * (zi_1 + a))) ** 5
+            - ((9 * a) / (16 * ((H-zi_1) + a)))
+            + (a / (8 * ((H-zi_1) + a))) ** 3
+            - (45 * a / (256 * ((H-zi_1) + a))) ** 4
+            - (a / (16 * ((H-zi_1) + a))) ** 5
         )
         ** (-1)
     )
 
-    return gam_xy
+    cdef double gam_xy_B = (
+        6
+        * pi
+        * a
+        * eta
+        * (
+            1
+            - ((9 * a) / (16 * ((H+zi_1) + a)))
+            + (a / (8 * ((H+zi_1) + a))) ** 3
+            - (45 * a / (256 * ((H+zi_1) + a))) ** 4
+            - (a / (16 * ((H+zi_1) + a))) ** 5
+        )
+        ** (-1)
+    )
+
+    cdef double gam_xy_0 = 6 * pi * a * eta
+
+    return (gam_xy_T + gam_xy_B - gam_xy_0)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double gamma_z(double zi_1, double a, double eta):
+cdef double gamma_z_eff(double zi_1, double a, double eta, double H):
     """
     Formule de Padé
     """
+    # Mur Top
     cdef double gam_z = (
         6
         * pi
@@ -376,13 +414,28 @@ cdef double gamma_z(double zi_1, double a, double eta):
         * eta
         * (
             (
-                (6 * zi_1**2 + 9*a*zi_1 + 2*a**2)
-                / (6 * zi_1**2 + 2*a*zi_1)
+                (6 * (H-zi_1)**2 + 9*a*(H-zi_1) + 2*a**2)
+                / (6 * (H-zi_1)**2 + 2*a*(H-zi_1))
+            )
+        )
+    )
+    # Mur Bottom
+    cdef double gam_z_2 = (
+        6
+        * pi
+        * a
+        * eta
+        * (
+            (
+                (6 * (H+zi_1)**2 + 9*a*(H+zi_1) + 2*a**2)
+                / (6 * (H+zi_1)**2 + 2*a*(H+zi_1))
             )
         )
     )
 
-    return gam_z
+    cdef double gam_z_0 = 6 * pi * a * eta
+
+    return (gam_z + gam_z_2 - gam_z_0)
 
 
 @cython.boundscheck(False)
@@ -406,10 +459,10 @@ cdef double Dprime(double zi, double kBT, double eta, double a, double H ):
     :return: La dérivée du coef de diffusion D'(z).
     """
 
-    cdef double gammaB_prime = 6*pi*eta*a * (-42*a*(H+z)**2 - 24*a**2*(H+z) - 4*a**2) / (6*(H+z)**2 + 2*a*(H+z))**2
-    cdef double gammaT_prime = 6*pi*eta*a * (+42*a*(H-z)**2 + 24*a**2*(H-z) + 4*a**2) / (6*(H-z)**2 + 2*a*(H-z))**2
+    cdef double gammaT_prime = 6*pi*eta*a * (+42*a*(H-zi)**2 + 24*a**2*(H-zi) + 4*a**2) / (6*(H-zi)**2 + 2*a*(H-zi))**2
+    cdef double gammaB_prime = 6*pi*eta*a * (-42*a*(H+zi)**2 - 24*a**2*(H+zi) - 4*a**2) / (6*(H+zi)**2 + 2*a*(H+zi))**2
 
-    cdef double D_prime = - kBT*(gammaB_prime + gammaT_prime) / (gamma_xy(H+zi, a, eta) + gamma_xy(H-zi, a, eta) + 6*pi*a*eta)**2
+    cdef double D_prime = - kBT*(gammaB_prime + gammaT_prime) / (gamma_z_eff(zi, a, eta, H))**2
 
     return D_prime
 
@@ -418,11 +471,11 @@ cdef double Dprime(double zi, double kBT, double eta, double a, double H ):
 @cython.nonecheck(False)
 @cython.cdivision(True)
 cdef double positionXYi_cython(double xi_1, double zi_1, double rng, double dt, double a,
-                               double Dpara_0, double kBT, double Hs):
+                               double eta, double kBT, double H):
     """
     :return: Position parallèle de la particule au temps suivant t+dt.
     """
-    cdef double gamma = gamma_xy(zi_1, a, Dpara_0, kBT, Hs)
+    cdef double gamma = gamma_xy_eff(H+zi_1, a, eta, H)  #gamma effectif avec 2 murs
     cdef double xi = xi_1 + w(gamma, kBT) * rng * dt
 
     return xi
@@ -431,21 +484,48 @@ cdef double positionXYi_cython(double xi_1, double zi_1, double rng, double dt, 
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
+cdef double spurious_max(double zi, double kBT, double eta, double a, double H):
+    cdef double eta_primes = a / (H-zi)**2 - a / (H+zi)**2 - (3*(8*a - 9))/(2*(a+3*H - 3*zi)**2) + (3*(8*a - 9))/(2*(a+3*(H+zi))**2)
+    eta_primes = eta_primes / eta
+
+    cdef double eta_B = eta * (6*(H+zi)**2 + 9*(H+zi) + 2*(H+zi)**2) / (6*(H+zi)**2 + 2*a*(H+zi))
+    cdef double eta_T = eta * (6*(H-zi)**2 + 9*(H-zi) + 2*(H-zi)**2) / (6*(H-zi)**2 + 2*a*(H-zi))
+
+    cdef double eta_eff = eta_B + eta_T - eta
+
+    return  - kBT / (6*np.pi*a) * eta_primes / eta_eff**2
+
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+@cython.cdivision(True)
+cdef double Forces(double z, double H, double kBT, double B, double lD, double lB):
+
+    cdef double Felec = B * kBT/lD * exp(-H/lD) * (exp(-z/lD) - exp(z/lD))
+    cdef double Fgrav = -kBT/lB
+    return Felec + Fgrav
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+@cython.cdivision(True)
 cdef double positionZi_cython(double zi_1, double rng, double dt, double a,
-                               double eta, double kBT, double H, double lB):
+                               double eta, double kBT, double H, double lB, double lD, double B):
     """
     :return: Position perpendiculaire de la particule au temps suivant t+dt.
     """
-    cdef double gamma = gamma_z(H+zi_1, a, eta) + gamma_z(H-zi_1, a, eta) - 6*pi*eta*a
-    cdef double spurious = Dprime(zi_1, kBT, eta, a, H ) # =D'
-    cdef double potentiel = - B * kBT/lD  * (exp((H+z)/lD) + exp(H-z)/lD)
-    cdef double zi = zi_1  + spurious*dt + potentiel*dt /gamma +  w(gamma, kBT)*rng*dt
-    # On ajoute le spurious drift dans la modélisation car F-Feq = +gg' = +D' gamma
+    cdef double gamma = gamma_z_eff(zi_1, a, eta, H) #gamma effectif avec 2 murs
+    cdef double spurious = Dprime(zi_1, kBT, eta, a, H ) # On ajoute le spurious drift dans la modélisation car F-Feq = +gg' = +D' gamma
+    cdef double forces = Forces(zi_1, H, kBT, B, lD, lB) #force_elec + force_gravitaire
 
-    if zi < -H+a:
-        zi = -2 * H -zi +2 * a
-    if zi > H-a:
-        zi = 2 * H - zi -2 * a
+    cdef double zi = zi_1  + spurious_max(zi_1, kBT, eta, a, H )*dt + forces*dt /gamma +  w(gamma, kBT)*rng*dt
+    if zi < -(H):
+        zi = -2*H - zi
+    if zi > H:
+        zi =  2*H - zi
 
     return zi
 
@@ -507,8 +587,8 @@ cdef double[:,:] trajectory_cython(unsigned long int Nt,
                                    unsigned long int Nt_sub,
                                    double[:,:] res,
                                    double dt,
-                                   double a,  double Dpara_0, double Dperp_0,
-                                   double kBT, double H, double Hs, double lB):
+                                   double a, double eta,
+                                   double kBT, double H, double lB, double lD, double B):
     """    
     :return: Trajectoire X, Y, Z calculer avec Cython.
     """
@@ -520,15 +600,21 @@ cdef double[:,:] trajectory_cython(unsigned long int Nt,
 
     for i in range(1, Nt):
         for j in range(0, Nt_sub):
-            x = positionXYi_cython(x, z, random_gaussian()/sqrt(dt), dt, a, Dpara_0, kBT, Hs)
-            y = positionXYi_cython(y, z, random_gaussian()/sqrt(dt), dt, a, Dpara_0, kBT, Hs)
-            z = positionZi_cython(z, random_gaussian()/sqrt(dt), dt, a, Dperp_0, kBT, H, lB)
+            x = positionXYi_cython(x, z, random_gaussian()/sqrt(dt), dt, a, eta, kBT, H)
+            y = positionXYi_cython(y, z, random_gaussian()/sqrt(dt), dt, a, eta, kBT, H)
+            z = positionZi_cython(z, random_gaussian()/sqrt(dt), dt, a, eta, kBT, H, lB, lD, B)
 
         res[0,i] = x
         res[1,i] = y
         res[2,i] = z
 
     return res
+
+
+
+
+
+
 
 
 def test():
