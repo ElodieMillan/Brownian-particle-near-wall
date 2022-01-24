@@ -17,6 +17,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import sys
+from scipy import interpolate
 
 
 sys.path.append(r"../OptimizedCython")
@@ -27,8 +28,6 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
     def __init__(self, dt, Nt, a, H, lD, Nt_sub=1, rho=1050.0, rhoF=1000.0, eta=0.001, kBT=1.38e-23*300, x0=None):
 
         delta_z = a*0.1
-        if x0 == None:
-            x0 = (0.0, 0.0, -H+a)
         super().__init__(dt, Nt, a, x0=x0)
         self.a = a
         self.H = H
@@ -42,6 +41,11 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         self.lD = lD
         self.B = 4.8
         self.lB = np.abs(kBT / (4/3 * np.pi * a**3 * (rhoF-rho)*9.81))
+        self.sample_f = self.sample()
+        self.x0 = x0
+        if x0 == None:
+            self.x0 = (0.0, 0.0, self.return_samples(1))
+
 
         del self.t
 
@@ -324,23 +328,35 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
 
         return Pdf
 
-    def uniform(self, delta_z):
-        if self.z - delta_z < -self.H:
-            return np.random.uniform(-self.H, self.z + delta_z)
-        elif self.z - delta_z > self.H:
-            return np.random.uniform(self.H - delta_z, self.H)
-        else:
-            return np.random.uniform(self.z - delta_z, self.z + delta_z)
+    ## Tirage aléatoire sur la PDF(z) pour z_0
+    def f(self, z):
+    # does not need to be normalized
+        zz = np.zeros_like(z)
 
-    def next(self, delta_z):
-        z_old = self.z
-        while z_old == self.z:
-            trial = self.uniform(delta_z)
-            acceptance = self.P_z_wall(trial)/self.P_z_wall(self.z)
+        for n,i in enumerate(z):
+            if (i < -self.H) or (i > self.H):
+                zz[n] = 0
+            else:
+                zz[n] = np.exp(-self.B*np.exp(-self.H/self.lD) * (np.exp(-i/self.lD) + np.exp(i/self.lD)) - i / self.lB)
 
-            if np.random.uniform() < acceptance:
-                self.z = trial
-        return self.z
+        return zz
+
+    def sample(self):
+        x = np.linspace(-self.H, self.H, 1000)
+        y = self.f(x)  # probability density function, pdf
+        cdf_y = np.cumsum(y)  # cumulative distribution function, cdf
+        cdf_y = cdf_y / cdf_y.max()  # takes care of normalizing cdf to 1.0
+        inverse_cdf = interpolate.interp1d(cdf_y, x)  # this is a function
+        return inverse_cdf
+
+    def return_samples(self, N=1):
+    # let's generate some samples according to the chosen pdf, f(x)
+        try :
+            uniform_samples = np.random.random(int(N))
+            required_samples = self.sample_f(uniform_samples)
+            return required_samples[0]
+        except ValueError:
+            self.return_samples(N)
 
 
 
@@ -425,12 +441,7 @@ cdef double gamma_z_eff(double zi_1, double a, double eta, double H):
         * pi
         * a
         * eta
-        * (
-            (
-                (6 * (H+zi_1)**2 + 9*a*(H+zi_1) + 2*a**2)
-                / (6 * (H+zi_1)**2 + 2*a*(H+zi_1))
-            )
-        )
+        * ((6*(H+zi_1)**2 + 9*a*(H+zi_1) + 2*a**2)/ (6 * (H+zi_1)**2 + 2*a*(H+zi_1)))
     )
 
     cdef double gam_z_0 = 6 * pi * a * eta
@@ -447,24 +458,24 @@ cdef double w(double gamma, double kBT):
     :return: Le bruit multiplicatif.
     """
     cdef double noise = sqrt(2 * kBT / gamma)
-
     return noise
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.nonecheck(False)
-@cython.cdivision(True)
-cdef double Dprime(double zi, double kBT, double eta, double a, double H ):
-    """
-    :return: La dérivée du coef de diffusion D'(z).
-    """
 
-    cdef double gammaT_prime = 6*pi*eta*a * (+42*a*(H-zi)**2 + 24*a**2*(H-zi) + 4*a**2) / (6*(H-zi)**2 + 2*a*(H-zi))**2
-    cdef double gammaB_prime = 6*pi*eta*a * (-42*a*(H+zi)**2 - 24*a**2*(H+zi) - 4*a**2) / (6*(H+zi)**2 + 2*a*(H+zi))**2
-
-    cdef double D_prime = - kBT*(gammaB_prime + gammaT_prime) / (gamma_z_eff(zi, a, eta, H))**2
-
-    return D_prime
+# @cython.boundscheck(False)
+# @cython.wraparound(False)
+# @cython.nonecheck(False)
+# @cython.cdivision(True)
+# cdef double Dprime(double zi, double kBT, double eta, double a, double H ):
+#     """
+#     :return: La dérivée du coef de diffusion D'(z).
+#     """
+#
+#     cdef double gammaT_prime = 6*pi*eta*a * (+42*a*(H-zi)**2 + 24*a**2*(H-zi) + 4*a**2) / (6*(H-zi)**2 + 2*a*(H-zi))**2
+#     cdef double gammaB_prime = 6*pi*eta*a * (-42*a*(H+zi)**2 - 24*a**2*(H+zi) - 4*a**2) / (6*(H+zi)**2 + 2*a*(H+zi))**2
+#
+#     cdef double D_prime = - kBT*(gammaB_prime + gammaT_prime) / (gamma_z_eff(zi, a, eta, H))**2
+#
+#     return D_prime
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -475,7 +486,7 @@ cdef double positionXYi_cython(double xi_1, double zi_1, double rng, double dt, 
     """
     :return: Position parallèle de la particule au temps suivant t+dt.
     """
-    cdef double gamma = gamma_xy_eff(H+zi_1, a, eta, H)  #gamma effectif avec 2 murs
+    cdef double gamma = gamma_xy_eff(zi_1, a, eta, H)  #gamma effectif avec 2 murs
     cdef double xi = xi_1 + w(gamma, kBT) * rng * dt
 
     return xi
@@ -484,16 +495,27 @@ cdef double positionXYi_cython(double xi_1, double zi_1, double rng, double dt, 
 @cython.wraparound(False)
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double spurious_max(double zi, double kBT, double eta, double a, double H):
-    cdef double eta_primes = a / (H-zi)**2 - a / (H+zi)**2 - (3*(8*a - 9))/(2*(a+3*H - 3*zi)**2) + (3*(8*a - 9))/(2*(a+3*(H+zi))**2)
-    eta_primes = eta_primes / eta
+cdef double Dprime_z(double zi, double kBT, double eta, double a, double H):
+    # Spurious force pour corriger overdamping (Auteur: Dr. Maxime Lavaud)
+    cdef double eta_B_primes = -(a * eta * (2 * a ** 2 + 12 * a * (H + zi) + 21 * (H + zi) ** 2)) / (
+        2 * (H + zi) ** 2 * (a + 3 * (H + zi)) ** 2
+    )
 
-    cdef double eta_B = eta * (6*(H+zi)**2 + 9*(H+zi) + 2*(H+zi)**2) / (6*(H+zi)**2 + 2*a*(H+zi))
-    cdef double eta_T = eta * (6*(H-zi)**2 + 9*(H-zi) + 2*(H-zi)**2) / (6*(H-zi)**2 + 2*a*(H-zi))
+    cdef double eta_T_primes = (
+        a
+        * eta
+        * (2 * a ** 2 + 12 * a * (H-zi) + 21 * (H-zi) ** 2)
+        / (2 * (a + 3*H - 3*zi) ** 2*(H-zi) ** 2)
+    )
+
+    cdef double eta_eff_primes = eta_B_primes + eta_T_primes
+
+    cdef double eta_B = eta * (6*(H+zi)**2 + 9*a*(H+zi) + 2*a**2) / (6*(H+zi)**2 + 2*a*(H+zi))
+    cdef double eta_T = eta * (6*(H-zi)**2 + 9*a*(H-zi) + 2*a**2) / (6*(H-zi)**2 + 2*a*(H-zi))
 
     cdef double eta_eff = eta_B + eta_T - eta
 
-    return  - kBT / (6*np.pi*a) * eta_primes / eta_eff**2
+    return  - kBT / (6*np.pi*a) * eta_eff_primes / eta_eff**2
 
 
 
@@ -518,10 +540,8 @@ cdef double positionZi_cython(double zi_1, double rng, double dt, double a,
     :return: Position perpendiculaire de la particule au temps suivant t+dt.
     """
     cdef double gamma = gamma_z_eff(zi_1, a, eta, H) #gamma effectif avec 2 murs
-    cdef double spurious = Dprime(zi_1, kBT, eta, a, H ) # On ajoute le spurious drift dans la modélisation car F-Feq = +gg' = +D' gamma
-    cdef double forces = Forces(zi_1, H, kBT, B, lD, lB) #force_elec + force_gravitaire
 
-    cdef double zi = zi_1  + spurious_max(zi_1, kBT, eta, a, H )*dt + forces*dt /gamma +  w(gamma, kBT)*rng*dt
+    cdef double zi = zi_1  + Dprime_z(zi_1, kBT, eta, a, H )*dt + Forces(zi_1, H, kBT, B, lD, lB)*dt /gamma +  w(gamma, kBT)*rng*dt
     if zi < -(H):
         zi = -2*H - zi
     if zi > H:

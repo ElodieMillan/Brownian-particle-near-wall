@@ -410,7 +410,7 @@ cdef double positionZi_cython(double zi_1, double rng, double dt, double a,
     cdef double gamma = gamma_z(zi_1, a, Dperp_0, kBT, H)
     # PAS DE POTENTIEL !!!
     cdef double correction = - Dperp_0 * (2*zi_1/(H-a)**2)
-    cdef double potentiel = kBT / lB #Si lB->inf => pas de potentiel.
+    cdef double potentiel = kBT / lB #Potentiel gravitaire : Si lB->inf => pas de potentiel.
     cdef double zi = zi_1  + correction * dt + potentiel *dt /gamma +  w(gamma, kBT) * rng * dt
     # On ajoute le spurious drift dans la modélisation car F-Feq = +gg' = +D' gamma
 
