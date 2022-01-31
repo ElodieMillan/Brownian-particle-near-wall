@@ -136,7 +136,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             plt.show()
 
         if output:
-            return msd, self.dt*list_dt_MSD*self.Nt_sub
+            return msd, self.dt*self.Nt_sub * list_dt_MSD
 
 
     def Cumulant4(self, axis, plot=True, output=False):
@@ -168,7 +168,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         c4 = np.zeros(len(list_dt_c4))
 
         # --- Compute cumulant4
-        for k, i in enumerate(tqdm(list_dt_c4)):
+        for k, i in enumerate(list_dt_c4):
             if i == 0:
                 c4[k] = 0
                 continue
@@ -198,7 +198,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             # plt.show()
 
         if output:
-            return self.dt * list_dt_c4 * self.Nt_sub, c4
+            return self.dt*self.Nt_sub * list_dt_c4, c4
 
 
 

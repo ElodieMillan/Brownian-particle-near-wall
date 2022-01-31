@@ -6,8 +6,11 @@ Fonction calcul cumulant ordre 4 théorique.
 
 import numpy as np
 from scipy.integrate import quad
+# def quad(f, a, b):
+#     res = romberg(f, a, b)
+#     return (res, 0)
 
-def C4_long(Dpara, Dperp, V, kBT, a, b):
+def C4_long(Dpara, Dperp, V, kBT, a, b, limit = 50):
     """
     Le cumulant d'ordre 4 au temps long s'écrit:
     C4_long = 24*(D4*tau - C4)
@@ -33,24 +36,24 @@ def C4_long(Dpara, Dperp, V, kBT, a, b):
 
 
     J = lambda z: (
-        quad(lambda zp: np.exp(-beta * V(zp)) * (Dpara(zp) - Dpara_mean), a, z)[0]
+        quad(lambda zp: np.exp(-beta * V(zp)) * (Dpara(zp) - Dpara_mean), a, z, limit=limit)[0]
     )
 
     D4 = (
         quad(
-            lambda zp: (J(zp) ** 2 * np.exp(beta * V(zp))) / Dperp(zp), a, b
+            lambda zp: (J(zp) ** 2 * np.exp(beta * V(zp))) / Dperp(zp), a, b, limit=limit
         )[0]
         / Z
     )
 
     # ----- calcul de C4
-    R = lambda z: quad(lambda zp: J(zp) * np.exp(beta * V(zp)) / Dperp(zp), a, z)[0]
+    R = lambda z: quad(lambda zp: J(zp) * np.exp(beta * V(zp)) / Dperp(zp), a, z, limit=limit)[0]
 
-    R_mean = quad(lambda zp: R(zp) * P_eq_z(zp), a, b)[0]
+    R_mean = quad(lambda zp: R(zp) * P_eq_z(zp), a, b, limit=limit)[0]
 
     f = lambda z: np.exp(-beta * V(z)) * (R_mean - R(z)) / Z
 
-    C4 = quad(lambda zp: f(zp) ** 2 / P_eq_z(zp), a, b)[0]
+    C4 = quad(lambda zp: f(zp) ** 2 / P_eq_z(zp), a, b, limit=limit)[0]
 
     return D4, C4
 
@@ -84,5 +87,13 @@ def C4_court(Dpara, V, kBT, a, b):
 
 
 def Cross_time(Dpara, Dperp, V, kBT, a, b):
-
-    return (C4_long(Dpara, Dperp, V, kBT, a, b)[0] / C4_court(Dpara, V, kBT, a, b))
+    A4 = C4_court(Dpara, V, kBT, a, b)
+    long = 24*C4_long(Dpara, Dperp, V, kBT, a, b)
+    D4 = long[0] * 24
+    C4 = long[1] * 24
+    Delta = D4**2 - 4*A4*C4
+    T_cross1 = (D4 + np.sqrt(Delta)) / (2*A4)
+    T_cross2 = (D4 - np.sqrt(Delta)) / (2*A4)
+    t_cross = max(T_cross1, T_cross2)
+    #return (24*C4_long(Dpara, Dperp, V, kBT, a, b)[0] / 2/C4_court(Dpara, V, kBT, a, b))
+    return T_cross1
