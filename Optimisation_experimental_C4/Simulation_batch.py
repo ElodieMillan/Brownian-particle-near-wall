@@ -29,8 +29,8 @@ for lizard in lizards:
     with open(job_file) as fh:
         fh.writelines("#!/bin/bash\n")
         fh.writelines("#SBATCH --job-name=%s.job\n" % lizard)
-        fh.writelines("#SBATCH --output=.out/%s.out\n" % lizard)
-        fh.writelines("#SBATCH --error=.out/%s.err\n" % lizard)
+        #fh.writelines("#SBATCH --output=.out/%s.out\n" % lizard)
+        #fh.writelines("#SBATCH --error=.out/%s.err\n" % lizard)
         fh.writelines("#SBATCH --time=2-00:00\n")
         fh.writelines("#SBATCH --mem=96000\n")
         fh.writelines("#SBATCH -N 1\n")

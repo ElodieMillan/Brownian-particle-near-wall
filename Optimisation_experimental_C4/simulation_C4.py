@@ -47,7 +47,4 @@ def compute(n):
 from multiprocessing import Pool
 
 with Pool(multiprocessing.cpu_count()) as p:
-    print(p.map(compute, range(nb_simu))
-
-
-
+    p.map(compute, range(nb_simu))
