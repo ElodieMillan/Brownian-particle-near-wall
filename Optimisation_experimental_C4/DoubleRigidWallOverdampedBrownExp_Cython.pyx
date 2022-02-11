@@ -25,7 +25,7 @@ from InertialLangevin3D_cython import InertialLangevin3D
 
 
 class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
-    def __init__(self, dt, Nt, a, H, lD, Nt_sub=1, rho=1050.0, rhoF=1000.0, B=4.8,  eta=0.001, kBT=1.38e-23*300, x0=None):
+    def __init__(self, dt, Nt, a, H, lD, lB, B=4.8, Nt_sub=1, rho=1050.0, rhoF=1000.0,  eta=0.001, kBT=1.38e-23*300, x0=None):
 
         delta_z = a*0.1
         super().__init__(dt, Nt, a, x0=x0)
@@ -40,7 +40,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         self.D0 = kBT/(6*np.pi*self.eta*self.a)
         self.lD = lD
         self.B = B
-        self.lB = np.abs(kBT / (4/3 * np.pi * a**3 * (rhoF-rho)*9.81))
+        self.lB = lB
         self.sample_f = self.sample()
         self.x0 = x0
         if x0 == None:

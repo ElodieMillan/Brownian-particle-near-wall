@@ -168,7 +168,7 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         c4 = np.zeros(len(list_dt_c4))
 
         # --- Compute cumulant4
-        for k, i in enumerate(tqdm(list_dt_c4)):
+        for k, i in enumerate((list_dt_c4)):
             if i == 0:
                 c4[k] = 0
                 continue
