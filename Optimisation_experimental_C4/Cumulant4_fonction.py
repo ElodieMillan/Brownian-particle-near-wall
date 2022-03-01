@@ -22,13 +22,13 @@ def C4_long(Dpara, Dperp, V, kBT, a, b, limit = 50):
     :param a: Borne inférieur d'intégration.
     :param b: Borne supérieur d'intégration.
 
-    :return: C4, D4
+    :return: 24*C4, 24*D4
     """
 
     global beta
     beta = 1 / kBT
 
-    # Calcul de la pente D4
+    # ------ Calcul de la pente D4
     Z = quad(lambda zp: np.exp(-beta * V(zp)), a, b)[0]
     P_eq_z = lambda z: np.exp(-beta * V(z)) / Z
 
@@ -41,7 +41,7 @@ def C4_long(Dpara, Dperp, V, kBT, a, b, limit = 50):
 
     D4 = (
         quad(
-            lambda zp: (J(zp) ** 2 * np.exp(beta * V(zp))) / Dperp(zp), a, b, limit=limit
+            lambda zp: (J(zp)**2 * np.exp(beta * V(zp))) / Dperp(zp), a, b, limit=limit
         )[0]
         / Z
     )
@@ -50,12 +50,14 @@ def C4_long(Dpara, Dperp, V, kBT, a, b, limit = 50):
     R = lambda z: quad(lambda zp: J(zp) * np.exp(beta * V(zp)) / Dperp(zp), a, z, limit=limit)[0]
 
     R_mean = quad(lambda zp: R(zp) * P_eq_z(zp), a, b, limit=limit)[0]
+    R_mean2 = quad(lambda zp: R(zp)**2 * P_eq_z(zp), a, b, limit=limit)[0]
 
-    f = lambda z: np.exp(-beta * V(z)) * (R_mean - R(z)) / Z
+    C4 = R_mean2 - R_mean**2
 
-    C4 = quad(lambda zp: f(zp) ** 2 / P_eq_z(zp), a, b, limit=limit)[0]
+    # f = lambda z: np.exp(-beta * V(z)) * (R_mean - R(z)) / Z
+    # C4 = quad(lambda zp: f(zp) ** 2 / P_eq_z(zp), a, b, limit=limit)[0]
 
-    return D4, C4
+    return D4*24, C4*24
 
 
 def C4_court(Dpara, V, kBT, a, b):
@@ -81,19 +83,13 @@ def C4_court(Dpara, V, kBT, a, b):
     Mean_Dpara = quad(lambda z : P_eq_z(z)*Dpara(z), a, b)[0]
     Mean_Dpara2 = quad(lambda z : P_eq_z(z)*Dpara(z)**2, a, b)[0]
 
-    A4 = (Mean_Dpara2 - Mean_Dpara**2)/2
+    A4 = (Mean_Dpara2 - Mean_Dpara**2)*12
 
     return A4
 
 
 def Cross_time(Dpara, Dperp, V, kBT, a, b):
     A4 = C4_court(Dpara, V, kBT, a, b)
-    long = 24*C4_long(Dpara, Dperp, V, kBT, a, b)
-    D4 = long[0] * 24
-    C4 = long[1] * 24
-    Delta = D4**2 - 4*A4*C4
-    T_cross1 = (D4 + np.sqrt(Delta)) / (2*A4)
-    T_cross2 = (D4 - np.sqrt(Delta)) / (2*A4)
-    t_cross = max(T_cross1, T_cross2)
-    #return (24*C4_long(Dpara, Dperp, V, kBT, a, b)[0] / 2/C4_court(Dpara, V, kBT, a, b))
-    return T_cross1
+    D4, C4 = C4_long(Dpara, Dperp, V, kBT, a, b)
+
+    return D4/(2*A4)

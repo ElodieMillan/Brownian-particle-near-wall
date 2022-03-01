@@ -139,12 +139,11 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
             return msd, self.dt*self.Nt_sub * list_dt_MSD
 
 
-    def Cumulant4(self, axis, plot=True, output=False):
+    def Cumulant4(self, axis):
         """
 
         :param axis: choose between "x", "y" or "z".
-        :param plot: Plot show if True.
-        :param output: Return {tau, cumulant4} if True.
+        :param output: Return {tau, cumulant4}.
         """
         # --- def some array
         if axis == "x":
@@ -156,49 +155,26 @@ class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
         else:
             raise ValueError('WRONG AXIS : choose between "x", "y" and "z" !')
 
-        list_dt_c4 = np.array([], dtype=int)
-        for i in range(len(str(self.Nt)) - 3):
+        list_Nt_c4 = np.array([], dtype=int)
+        for i in range(len(str(self.Nt)) - 1):
             # Take just 10 points by decade.
-            list_dt_c4 = np.concatenate(
+            list_Nt_c4 = np.concatenate(
                 (
-                    list_dt_c4,
+                    list_Nt_c4,
                     np.arange(10 ** i, 10 ** (i + 1), 10 ** i, dtype=int),
                 )
             )
-        c4 = np.zeros(len(list_dt_c4))
+        c4 = np.zeros(len(list_Nt_c4))
 
         # --- Compute cumulant4
-        for k, i in enumerate(list_dt_c4):
+        for k, i in enumerate(list_Nt_c4):
             if i == 0:
                 c4[k] = 0
                 continue
             deltaX = position[i:] - position[:-i]
-            c4[k] = (np.mean(deltaX**4) - 3 * (np.mean(deltaX**2))**2) / (24)
+            c4[k] = (np.mean(deltaX**4) - 3 * (np.mean(deltaX**2))**2)
 
-        if plot:
-            plt.loglog(self.dt*list_dt_c4, c4, "o", label=r"$\mathrm{Simulation}$")
-
-            plt.xlabel(r"$\tau~(\mathrm{s})$", fontsize=15)
-            plt.ylabel(r"$C^{(4)_"+axis+"}~(\mathrm{m}^4)$", fontsize=15)
-            plt.axis([np.min(self.dt*list_dt_c4) / 5, np.max(self.dt*list_dt_c4) * 5, None, None])
-
-            ax = plt.gca()
-            locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
-            ax.xaxis.set_major_locator(locmaj)
-            locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
-            ax.xaxis.set_minor_locator(locmin)
-            ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-            locmaj = mpl.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
-            ax.yaxis.set_major_locator(locmaj)
-            locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=100)
-            ax.yaxis.set_minor_locator(locmin)
-            # ax.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-
-            plt.legend()
-            # plt.show()
-
-        if output:
-            return self.dt*self.Nt_sub * list_dt_c4, c4
+        return self.dt*self.Nt_sub * list_Nt_c4, c4
 
 
 
@@ -394,7 +370,7 @@ cdef double gamma_xy_eff(double zi_1, double a, double eta, double H):
         )
         ** (-1)
     )
-
+    # Mur Bottom
     cdef double gam_xy_B = (
         6
         * pi
@@ -460,23 +436,6 @@ cdef double w(double gamma, double kBT):
     cdef double noise = sqrt(2 * kBT / gamma)
     return noise
 
-
-# @cython.boundscheck(False)
-# @cython.wraparound(False)
-# @cython.nonecheck(False)
-# @cython.cdivision(True)
-# cdef double Dprime(double zi, double kBT, double eta, double a, double H ):
-#     """
-#     :return: La dérivée du coef de diffusion D'(z).
-#     """
-#
-#     cdef double gammaT_prime = 6*pi*eta*a * (+42*a*(H-zi)**2 + 24*a**2*(H-zi) + 4*a**2) / (6*(H-zi)**2 + 2*a*(H-zi))**2
-#     cdef double gammaB_prime = 6*pi*eta*a * (-42*a*(H+zi)**2 - 24*a**2*(H+zi) - 4*a**2) / (6*(H+zi)**2 + 2*a*(H+zi))**2
-#
-#     cdef double D_prime = - kBT*(gammaB_prime + gammaT_prime) / (gamma_z_eff(zi, a, eta, H))**2
-#
-#     return D_prime
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -497,6 +456,7 @@ cdef double positionXYi_cython(double xi_1, double zi_1, double rng, double dt, 
 @cython.cdivision(True)
 cdef double Dprime_z(double zi, double kBT, double eta, double a, double H):
     # Spurious force pour corriger overdamping (Auteur: Dr. Maxime Lavaud)
+
     cdef double eta_B_primes = -(a * eta * (2 * a ** 2 + 12 * a * (H + zi) + 21 * (H + zi) ** 2)) / (
         2 * (H + zi) ** 2 * (a + 3 * (H + zi)) ** 2
     )
@@ -509,6 +469,13 @@ cdef double Dprime_z(double zi, double kBT, double eta, double a, double H):
     )
 
     cdef double eta_eff_primes = eta_B_primes + eta_T_primes
+
+    # cdef double eta_eff_primes = eta * (
+    #         a/(H-zi)**2
+    #         - a/(H+zi)**2
+    #         - (3*(8*a-9))/(2*(a+3*H-3*zi)**2)
+    #         + (3*(8*a-9))/(2*(a+3*H+3*zi)**2)
+    # )
 
     cdef double eta_B = eta * (6*(H+zi)**2 + 9*a*(H+zi) + 2*a**2) / (6*(H+zi)**2 + 2*a*(H+zi))
     cdef double eta_T = eta * (6*(H-zi)**2 + 9*a*(H-zi) + 2*a**2) / (6*(H-zi)**2 + 2*a*(H-zi))
@@ -642,5 +609,6 @@ def test():
         dt=1 / 60, Nt=1000000, a=1.5e-6, rho=1050, x0=(0.0, 0.0, 1.0e-6)
     )
     langevin3D.trajectory()
+
 if __name__ == '__main__':
     test()
