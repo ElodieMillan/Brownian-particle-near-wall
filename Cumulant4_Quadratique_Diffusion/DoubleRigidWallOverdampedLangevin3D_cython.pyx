@@ -17,7 +17,7 @@ import matplotlib as mpl
 import sys
 
 
-sys.path.append(r"../OptimizedCython")
+sys.path.append(r"../Code-Cython")
 from InertialLangevin3D_cython import InertialLangevin3D
 
 
