@@ -1,5 +1,4 @@
-# distutils: language = c
-
+#cython: language_level=3
 # python setup.py build_ext -i clean
 
 from distutils.core import setup
@@ -23,10 +22,15 @@ extensions = []
 for i in sources:
     extension = Extension(i[:-4],
                             sources= [i],
-                           # extra_compile_args=['/O2'],
-                            language='c',)
+                            #extra_compile_args=['/O2'],
+                            language='c',
+                            define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")])
 
     extensions.append(extension)
+
+for e in extensions:
+    e.cython_directives = {'language_level': "3str"} #all are Python-3
+
 
 setup(
     name="Langevin",
