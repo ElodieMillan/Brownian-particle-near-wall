@@ -182,7 +182,7 @@ cdef double random_uniform():
 
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cdef double random_gaussian():
+cdef double random_gaussian(): #Box-muller algorithm : méthode polaire pour éviter les calculs de cos et sin
     cdef double x1, x2, w
 
     w = 2.0
@@ -190,7 +190,6 @@ cdef double random_gaussian():
         x1 = 2.0 * random_uniform() - 1.0
         x2 = 2.0 * random_uniform() - 1.0
         w = x1 * x1 + x2 * x2
-
     w = ((-2.0 * log(w)) / w) ** 0.5
     return x1 * w
 

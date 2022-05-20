@@ -7,7 +7,7 @@ Fonction calcul cumulant ordre 4 théorique asymptotique.
 import numpy as np
 # from scipy.integrate import simpson
 
-def C4_court(Dpara, V, kBT, hmin, hmax, dx):
+def C4_court(Dpara, Peq, kBT, hmin, hmax, dx):
     """
     Le cumulant d'ordre 4 au temps court s'écrit:
     C4_court = A4 * tau²
@@ -28,18 +28,17 @@ def C4_court(Dpara, V, kBT, hmin, hmax, dx):
     Nt = int((hmax-hmin)/dx)
     z = np.linspace(hmin, hmax, Nt, endpoint=True)
 
-    Z = np.trapz(y=[np.exp(-beta * V(i)) for i in z], dx=dx)
-    P_eq_z = lambda z: np.exp(-beta * V(z)) / Z
+    N = np.trapz(Peq(z), z)
 
-    Mean_Dpara = np.trapz(y=[P_eq_z(i)*Dpara(i) for i in z], dx=dx)
-    Mean_Dpara2 = np.trapz(y=[P_eq_z(i)*Dpara(i)**2 for i in z], dx=dx)
+    Mean_Dpara = np.trapz(Peq(z)/N *Dpara(z), z)
+    Mean_Dpara2 = np.trapz(Peq(z)/N *Dpara(z)**2, z)
 
     A4 = (Mean_Dpara2 - Mean_Dpara**2)*12
 
     return A4
 
 
-def C4_long(Dpara, Dperp, V, kBT, H, dx):
+def C4_long(Dpara, Dperp, Peq, H, dx):
     """
     Le cumulant d'ordre 4 au temps long s'écrit:
     C4_long = 24*(D4*tau - C4)
@@ -55,33 +54,26 @@ def C4_long(Dpara, Dperp, V, kBT, H, dx):
     :return: 24*D4, 24*C4
     """
 
-    global beta
-    beta = 1 / kBT
-    espilon = 1e-4*H
-    hmin = -(H+espilon)
-    hmax = H+espilon
+    espilon = H*1e-5
+
+    hmin = -(H-espilon)
+    hmax = H-espilon
 
     Nt = int((hmax - hmin) / dx)
-    z = np.linspace(hmin, hmax, Nt, endpoint=True)
+    z = np.linspace(hmin, hmax, Nt) #, endpoint=True
 
-    VV = [V(i) for i in z]
-    D_Para = [Dpara(i) for i in z]
-    D_Perp = [Dperp(i) for i in z]
+    N = np.trapz(Peq(z), z)
 
-    Z = np.trapz(y=[np.exp(-beta*VV[i]) for i in range(len(z))], dx=dx)
-    Peq = [np.exp(-beta * V(i)) / Z for i in z]
-
-    Dpara_mean = np.trapz(y=[Peq[i]*D_Para[i] for i in range(len(z))], dx=dx)
+    Dpara_mean = np.trapz(Dpara(z)*Peq(z) / N, z)
 
     def J(z):
         if z == hmin:
             return 0
-        zp = np.linspace(hmin, z, int((z - hmin)/ dx), endpoint=True)
-        j = np.trapz( y=[np.exp(-beta * V(i)) * (Dpara(i) - Dpara_mean) for i in zp] , dx=dx )
-        return j
+        zp = np.linspace(hmin, z, int((z - hmin)/ dx))
+        return np.trapz(Peq(zp)* (Dpara(zp)-Dpara_mean), zp)
 
-    JJ = [J(i) for i in z]
-    D4 = np.trapz( y=[JJ[i]**2 * np.exp(beta*VV[i]) / D_Perp[i] for i in range(len(z))], dx=dx )
+    JJ = [J(i)**2 for i in z]
+    D4 = np.trapz(JJ / Peq(z) / Dperp(z) / N, z)
 
     # def R(z):
     #     if z == hmin:
