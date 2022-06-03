@@ -5,11 +5,11 @@ Les datas sont dans C4_Datas/
 Paramètres fixes des simus du cas expérimentale:
 
 a = 1.5e-6
-H = 20e-6
-lD = 68.0e-9
-lB = 565.0e-9
+H = 40e-6
+lD = 88.0e-9
+lB = 526.0e-9
 kBT=1.38e-23*300
-B=4.8
+B=5.0
 eta=0.001
 
 ===========================================================

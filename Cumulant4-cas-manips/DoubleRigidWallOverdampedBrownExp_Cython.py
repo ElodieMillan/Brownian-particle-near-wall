@@ -12,21 +12,19 @@ import sys
 from scipy import interpolate
 from cythonised_simu_part import trajectory_cython
 
-sys.path.append(r"../Code-Cython")
+sys.path.append(r"/home/e.millan/Documents/Stage2020-Nageurs-actifs-proche-de-parois-deformable/Code-Cython")
 
-from InertialLangevin3D_cython import InertialLangevin3D
+from OverdampedLangevin3D_cython import Langevin3D
 
 
-class RigidWallOverdampedLangevin3D( InertialLangevin3D ):
-    def __init__(self, dt, Nt, a, H, lD, lB, B=4.8, Nt_sub=1, rho=1050.0, rhoF=1000.0,  eta=0.001, kBT=1.38e-23*300, x0=None):
+class RigidWallOverdampedLangevin3D( Langevin3D ):
+    def __init__(self, dt, Nt, a, H, lD, lB, B=4.8, Nt_sub=1, eta=0.001, kBT=1.38e-23*300, x0=None):
 
         delta_z = a*0.1
         super().__init__(dt, Nt, a, x0=x0)
         self.a = a
         self.H = H
         self.Nt_sub = Nt_sub
-        self.rho = rho
-        self.rhoF = rhoF
         self.eta = eta
         self.kBT = kBT
         self.Hp = self.H + self.a

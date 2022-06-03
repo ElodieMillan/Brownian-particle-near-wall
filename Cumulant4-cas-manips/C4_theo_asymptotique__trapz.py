@@ -7,7 +7,7 @@ Fonction calcul cumulant ordre 4 théorique asymptotique.
 import numpy as np
 # from scipy.integrate import simpson
 
-def C4_court(Dpara, Peq, kBT, hmin, hmax, dx):
+def C4_court(D, Peq, kBT, B, lD, lB, H, a, eta, dx,):
     """
     Le cumulant d'ordre 4 au temps court s'écrit:
     C4_court = A4 * tau²
@@ -24,14 +24,16 @@ def C4_court(Dpara, Peq, kBT, hmin, hmax, dx):
     """
     global beta
     beta = 1/kBT
+    hmin = -H + H * 1e-5
+    hmax = +H - H * 1e-5
 
     Nt = int((hmax-hmin)/dx)
     z = np.linspace(hmin, hmax, Nt, endpoint=True)
 
-    N = np.trapz(Peq(z), z)
+    N = np.trapz(Peq(z, B, lD, lB, H), z)
 
-    Mean_Dpara = np.trapz(Peq(z)/N *Dpara(z), z)
-    Mean_Dpara2 = np.trapz(Peq(z)/N *Dpara(z)**2, z)
+    Mean_Dpara = np.trapz(Peq(z, B, lD, lB, H)/N *D(z, a, eta, H), z)
+    Mean_Dpara2 = np.trapz(Peq(z, B, lD, lB, H)/N *D(z, a, eta, H)**2, z)
 
     A4 = (Mean_Dpara2 - Mean_Dpara**2)*12
 
