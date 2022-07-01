@@ -150,7 +150,7 @@ def random_gaussian(): #Box-muller algorithm : méthode polaire pour éviter les
     w = ((-2.0 * np.log(w)) / w) ** 0.5
     return x1 * w
 
-def trajectory_cython(Nt, Nt_sub, res, dt, a, eta, kBT, H, lB, lD, B):
+def trajectory_python(Nt, Nt_sub, res, dt, a, eta, kBT, H, lB, lD, B):
     """    
     :return: Trajectoire X, Y, Z calculer avec Cython.
     """

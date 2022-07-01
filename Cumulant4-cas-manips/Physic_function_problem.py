@@ -122,7 +122,14 @@ def F_grav(z, lB,):
     return - kBT / lB * np.ones(len(z))
 
 def P_eq(z, B, lD, lB, H):
-    return np.exp(-B * np.exp(-H / lD) * (np.exp(-z / lD) + np.exp(z / lD)) - z / lB)
+    return np.array([_P_eq(i, B, lD, lB, H) for i in z])
+
+def _P_eq(z, B, lD, lB, H):
+    if z > H :
+        return 0
+    if z < -H:
+        return 0
+    return np.exp(-B * np.exp(-H / lD) * (np.exp(-z / lD) + np.exp(z / lD)) - (H+z) / lB)
 
 def F_spurious(z, a, eta, H):
     return Dprime_z_eff(z, kBT, eta, a, H) * gamma_z_eff(z, eta, a, H)

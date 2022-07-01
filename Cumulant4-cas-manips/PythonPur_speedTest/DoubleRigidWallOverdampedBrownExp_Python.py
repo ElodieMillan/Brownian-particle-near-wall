@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 import sys
 from scipy import interpolate
-from Function_simu_part import trajectory_cython
+from Function_simu_part import trajectory_python
 
 sys.path.append(r"../../Code-Pure-Python")
 
@@ -55,7 +55,7 @@ class RigidWallOverdampedLangevin3D( Langevin3D ):
         res[1,0] = self.x0[1]
         res[2,0] = self.x0[2]
 
-        res = np.asarray(trajectory_cython(self.Nt, self.Nt_sub,
+        res = np.asarray(trajectory_python(self.Nt, self.Nt_sub,
                                    res,
                                    self.dt,
                                    self.a, self.eta,
