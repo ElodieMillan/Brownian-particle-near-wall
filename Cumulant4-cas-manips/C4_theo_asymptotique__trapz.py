@@ -40,7 +40,7 @@ def C4_court(D, Peq, kBT, B, lD, lB, H, a, eta, dx,):
     return A4
 
 
-def C4_long(Dpara, Dperp, Peq, H, dx):
+def C4_long(V, Dpara, Dperp, Peq, kBT, B, lD, lB, H, a, eta, dx):
     """
     Le cumulant d'ordre 4 au temps long s'écrit:
     C4_long = 24*(D4*tau - C4)
@@ -56,6 +56,7 @@ def C4_long(Dpara, Dperp, Peq, H, dx):
     :return: 24*D4, 24*C4
     """
 
+    beta = 1/kBT
     espilon = H*1e-5
 
     hmin = -(H-espilon)
@@ -64,29 +65,30 @@ def C4_long(Dpara, Dperp, Peq, H, dx):
     Nt = int((hmax - hmin) / dx)
     z = np.linspace(hmin, hmax, Nt) #, endpoint=True
 
-    N = np.trapz(Peq(z), z)
+    N = np.trapz(Peq(z, B, lD, lB, H), z)
 
-    Dpara_mean = np.trapz(Dpara(z)*Peq(z) / N, z)
+    Dpara_mean = np.trapz(Dpara(z, a, eta, H)*Peq(z, B, lD, lB, H) / N, z)
 
     def J(z):
         if z == hmin:
             return 0
         zp = np.linspace(hmin, z, int((z - hmin)/ dx))
-        return np.trapz(Peq(zp)* (Dpara(zp)-Dpara_mean), zp)
+        return np.trapz(Peq(zp, B, lD, lB, H)* (Dpara(zp, a, eta, H)-Dpara_mean), zp)
 
     JJ = [J(i)**2 for i in z]
-    D4 = np.trapz(JJ / Peq(z) / Dperp(z) / N, z)
+    D4 = np.trapz(JJ / Peq(z, B, lD, lB, H)/ Dperp(z, a, eta, H) / N, z)
 
-    # def R(z):
-    #     if z == hmin:
-    #         return 0
-    #     zp = np.linspace(hmin, z, int((z-hmin)/ dx), endpoint=True)
-    #     r = np.trapz(y=[J(i)*np.exp(beta*V(i)) / Dperp(i) for i in zp], dx=dx)
-    #     return r
-    # 
-    # RR = [R(i) for i in z]
-    # R_mean = np.trapz(y=[RR[i] * Peq[i] for i in range(len(z))], dx=dx)
-    # R_mean2 = np.trapz (y=[RR[i]**2 * Peq[i] for i in range(len(z))], dx=dx)
-    # C4 = R_mean2 - R_mean**2
+    def R(z):
+        if z == hmin:
+            return 0
+        zp = np.linspace(hmin, z, int((z-hmin)/ dx), endpoint=True)
+        r = np.trapz(y=[J(i)*np.exp(beta*V(i, B, lD, lB, H)) / Dperp(i, a, eta, H) for i in zp], dx=dx)
+        return r
 
-    return D4*24#, C4*24
+    RR = [R(i) for i in z]
+    for i in range(len(z)):
+        R_mean = np.trapz(y= RR[i] * Peq(i, B, lD, lB, H), dx=dx)
+        R_mean2 = np.trapz (y= RR[i]**2 * Peq(i, B, lD, lB, H), dx=dx)
+    C4 = R_mean2 - R_mean**2
+
+    return D4*24, C4*24
