@@ -79,6 +79,7 @@ def C4_long(V, Dpara, Dperp, Peq, kBT, B, lD, lB, H, a, eta, dx):
     D4 = np.trapz(JJ / Peq(z, B, lD, lB, H)/ Dperp(z, a, eta, H) / N, z)
 
     def R(z):
+
         if z == hmin:
             return 0
         zp = np.linspace(hmin, z, int((z-hmin)/ dx), endpoint=True)
