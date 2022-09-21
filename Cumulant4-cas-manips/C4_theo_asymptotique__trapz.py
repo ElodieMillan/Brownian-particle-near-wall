@@ -79,17 +79,18 @@ def C4_long(V, Dpara, Dperp, Peq, kBT, B, lD, lB, H, a, eta, dx):
     D4 = np.trapz(JJ / Peq(z, B, lD, lB, H)/ Dperp(z, a, eta, H) / N, z)
 
     def R(z):
-
         if z == hmin:
             return 0
         zp = np.linspace(hmin, z, int((z-hmin)/ dx), endpoint=True)
         r = np.trapz(y=[J(i)*np.exp(beta*V(i, B, lD, lB, H)) / Dperp(i, a, eta, H) for i in zp], dx=dx)
         return r
+    #
+    RR = np.array([R(i) for i in z])
 
-    RR = [R(i) for i in z]
-    for i in range(len(z)):
-        R_mean = np.trapz(y= RR[i] * Peq(i, B, lD, lB, H), dx=dx)
-        R_mean2 = np.trapz (y= RR[i]**2 * Peq(i, B, lD, lB, H), dx=dx)
+    # for i in range(len(z)):
+    R_mean = np.trapz(y= RR * Peq(z, B, lD, lB, H), dx=dx)
+    R_mean2 = np.trapz (y= RR**2 * Peq(z, B, lD, lB, H), dx=dx)
+
     C4 = R_mean2 - R_mean**2
 
     return D4*24, C4*24

@@ -106,6 +106,9 @@ def Dprime_z_eff(zi, kBT, eta, a, H):
 def V(z, B, lD, lB, H):
     return B * kBT * np.exp(-H / lD) * (np.exp(-z / lD) + np.exp(+z / lD)) + kBT / lB * z
 
+# def V(z, B, lD, lB, H):
+#     return np.array([_V(z, B, lD, lB, H) for i in z])
+
 def D_perp(z, a, eta, H):
     return kBT / _gamma_z_eff(z, a, eta, H)
 
